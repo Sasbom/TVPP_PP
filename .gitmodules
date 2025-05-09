@@ -1,7 +1,3 @@
 [submodule "TVPP_PP/mio"]
 	path = TVPP_PP/mio
 	url = https://github.com/vimpunk/mio.git
-
-[submodule "TVPP_PP/miniz"]
-	path = TVPP_PP/miniz
-	url = https://github.com/richgel999/miniz.git
