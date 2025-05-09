@@ -3,71 +3,39 @@
 #include <iostream>
 #include <span>
 #include "mio/single_include/mio/mio.hpp"
-#include "miniz/miniz.h"
-#include "miniz/miniz_tinfl.h"
-#include <vector>
-
-bool decompress_multiple_zlib_streams(const uint8_t* input, std::size_t inputSize, std::vector<uint8_t>& output) {
-    std::size_t offset = 0;
-
-    while (offset < inputSize) {
-        mz_stream stream;
-        std::memset(&stream, 0, sizeof(stream));
-        stream.next_in = input + offset;
-        stream.avail_in = inputSize - offset;
-        // Set up output buffer
-        const std::size_t chunkSize = 4096;
-        std::vector<uint8_t> outChunk(chunkSize);
-        
-        if (inflateInit(&stream) != Z_OK) {
-        //    std::cerr << "Failed to initialize inflate" << std::endl;
-        //    return false;
-        //}
-
-        int status;
-        do {
-            stream.next_out = outChunk.data();
-            stream.avail_out = chunkSize;
-
-            status = mz_inflate(&stream, Z_NO_FLUSH);
-            if (status != Z_OK && status != Z_STREAM_END) {
-                std::cerr << "Decompression error: " << status << std::endl;
-                mz_inflateEnd(&stream);
-                return false;
-            }
-
-            size_t have = chunkSize - stream.avail_out;
-            output.insert(output.end(), outChunk.data(), outChunk.data() + have);
-
-        } while (status != Z_STREAM_END);
-
-        offset = stream.total_in; // Advance to next stream (if any)
-        mz_inflateEnd(&stream);
-
-        if (offset >= inputSize)
-            break;
-
-        // Move to the next stream's start (handle partial reads)
-        input += stream.total_in;
-        inputSize -= stream.total_in;
-    }
-
-    return true;
-}
+#include "tvp_pp/zlib_util.h"
+#include "tvp_pp/RLE.h"
+#include <fstream>
 
 int main()
 {
 	
-	mio::mmap_source mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
-	std::size_t start_DBOD_block = 61907;
-	std::size_t end_DBOD_block = 64891;
+	mio::basic_mmap_source<std::uint8_t> mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
+	std::size_t start_DBOD_block = 61907; //63435;
+	std::size_t end_DBOD_block = 63656;
 
 	auto DBOD_span = std::span(mmap.begin() + start_DBOD_block,mmap.begin() + end_DBOD_block);
 
-	for (auto& it : DBOD_span) {
-		std::cout << it;
-	}
+    //decompress_multiple_zlib_streams(DBOD_span.data(),DBOD_span.size(), decompressed_val);
+	auto decompressed_val = decompress_span_zlib(DBOD_span);
+
+	auto headerless_span = std::span(decompressed_val.begin(), decompressed_val.end());
+	std::cout << "size: " << headerless_span.size() << "\n";
 	
+	//for (auto& it : decompressed_data.value()) {
+	//    std::cout << it;
+	//}
+
+	auto unroll = unroll_rle(headerless_span,8);
+
+	std::cout << unroll.has_value();
+
+	auto unrollval = unroll.value();
+	std::ofstream file("test_dump_img.bin", std::ios::binary);
+	file.write(reinterpret_cast<char*>(unrollval.data()), unrollval.size());
+
+	file.close();
+
 	std::cout << "\n\nHello CMake.\n" << "mmapped file length: "<< mmap.length() << "\n";
 	return 0;
 }
