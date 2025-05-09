@@ -3,8 +3,8 @@
 #include <iostream>
 #include <span>
 #include "mio/single_include/mio/mio.hpp"
-#include "tvp_pp/zlib_util.h"
-#include "tvp_pp/RLE.h"
+#include "tvp_pp/zlib_util.hpp"
+#include "tvp_pp/RLE.hpp"
 #include <fstream>
 
 int main()
