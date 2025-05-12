@@ -7,14 +7,22 @@
 #include "tvp_pp/RLE.hpp"
 #include "tvp_pp/num_util.hpp"
 #include "tvp_pp/buffer.hpp"
+#include "tvp_pp/file_util.hpp"
 #include <fstream>
 
 int main()
 {
 	
 	mio::basic_mmap_source<std::uint8_t> mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
-	std::size_t start_DBOD_block = 61907; //63435;
-	std::size_t end_DBOD_block = 63656;
+	auto hdr = seek_header(mmap);
+	
+	file_read_header(hdr);
+
+	//std::size_t start_DBOD_block = 61907; //63435;
+	//std::size_t end_DBOD_block = 63656;
+
+	std::size_t start_DBOD_block = 63696; //63435;
+	std::size_t end_DBOD_block = 63720;
 
 	auto DBOD_span = std::span(mmap.begin() + start_DBOD_block,mmap.begin() + end_DBOD_block);
 
@@ -28,6 +36,12 @@ int main()
 	//    std::cout << it;
 	//}
 
+	std::ofstream srawfile("test_dump_SRAW.bin", std::ios::binary);
+	srawfile.write(reinterpret_cast<char*>(headerless_span.data()), headerless_span.size());
+
+	srawfile.close();
+
+	return 0;
 	std::cout << swap_endianness_uintx(std::uint16_t(123)) << '\n';
 
 	auto unroll = unroll_rle(headerless_span,8);
