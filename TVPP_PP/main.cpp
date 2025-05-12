@@ -5,6 +5,8 @@
 #include "mio/single_include/mio/mio.hpp"
 #include "tvp_pp/zlib_util.hpp"
 #include "tvp_pp/RLE.hpp"
+#include "tvp_pp/num_util.hpp"
+#include "tvp_pp/buffer.hpp"
 #include <fstream>
 
 int main()
@@ -25,6 +27,8 @@ int main()
 	//for (auto& it : decompressed_data.value()) {
 	//    std::cout << it;
 	//}
+
+	std::cout << swap_endianness_uintx(std::uint16_t(123)) << '\n';
 
 	auto unroll = unroll_rle(headerless_span,8);
 

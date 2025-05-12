@@ -1,17 +1,41 @@
 #pragma once
 #include <cstdint>
 #include <concepts>
+#include <array>
 
-// Ridiculous way to compile some numbers together as a big endian uint32.
-template<typename ... Ts> requires (std::is_integral_v<Ts> && ...)
-std::uint32_t be_int32(Ts ... nums) {
-    std::uint32_t num = 0;
-    std::size_t start = 32;
+template<typename I, typename ... Ts>
+concept uintx_compatible = requires(I i, Ts&& ... t) {
+    requires (((sizeof(t)) + ...) == sizeof(i));
+    requires (std::unsigned_integral<Ts> && ...) && std::unsigned_integral<I>;
+};
 
-    ([&](auto&& n) {
-        start -= sizeof(n) * 8;
-        num += (n << start);
-        }(nums), ...);
+template<typename T = std::uint32_t, typename ... Ts>
+requires uintx_compatible<T, Ts...>
+T bigend_cast_from_ints(Ts&& ... nums) {
+    auto shift = [g = (sizeof(T) * 8)](auto&& n) mutable {
+        g -= sizeof(n) * 8;
+        return g;
+        };
 
+    return ((nums << shift(nums)) | ...);
+}
+
+template<typename T = std::uint32_t>
+requires std::unsigned_integral<T> && (sizeof(T) > 1)
+void swap_endianness_uintx_inplace(T& num) {
+    std::uint8_t* n_ptr = reinterpret_cast<std::uint8_t*>(&num);
+    std::size_t c{ 0 };
+    for (auto i = n_ptr; i != n_ptr + (sizeof(num) / 2); i++, c++) {
+        auto a = *i;
+        auto b_ptr = n_ptr + (sizeof(num) - c - 1);
+        *i = *b_ptr;
+        *b_ptr = a;
+    }
+}
+
+template<typename T = std::uint32_t>
+    requires std::unsigned_integral<T> && (sizeof(T) > 1)
+T swap_endianness_uintx(T num) {
+    swap_endianness_uintx_inplace(num);
     return num;
 }
