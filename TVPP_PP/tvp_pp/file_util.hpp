@@ -55,27 +55,62 @@ struct FileInfo {
 
 // unknown sentinel info BC 40 11 D7 | �@�
 
-std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file, std::size_t max_read = 100) {
+std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file,std::size_t& offset, std::size_t skips = 1, std::size_t max_read = 100 ) {
 	// 5A AF AA AB | Z¯ª«
-	std::uint32_t sentinel = 0x5AAFAAAB;
-	std::size_t skips = 1;
+	static std::uint32_t sentinel = 0x5AAFAAAB;
+	//std::size_t skips = 1;
 	std::size_t length = 0;
 	auto read_4 = [](std::uint8_t const * it) {
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1),*(it + 2), *(it + 3));
 	};
 
 	std::size_t c{ 0 };
-	auto it = mmap_file.begin();
-	for (; it != mmap_file.end(); it++, c++) {
+	auto it = mmap_file.begin() + offset;
+	for (; it != mmap_file.end(); it++, c++, offset++) {
 		if (read_4(it) == sentinel && skips > 0) {
 			skips -= 1;
 			it += 4; // skip header
+			std::cout << "skipping" << skips << "\n";
+			offset += 4;
 			continue;
 		}
-		else if (read_4(it) == sentinel){
+		if (read_4(it) == sentinel && skips == 0){
 			it += 8; // offset past sentinel into length
 			length = read_4(it);
 			it += 8;
+			offset += 16 + length;
+			break;
+		}
+		if (c >= max_read) {
+			break;
+		}
+	}
+	return std::span<std::uint8_t const>(it, it + length);
+}
+
+std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, std::size_t& offset, std::size_t skips = 0) {
+	// 5A AF AA AB | Z¯ª«
+	static std::uint32_t sentinel = 0x5AAFAAAB;
+	//std::size_t skips = 1;
+	std::size_t length = 0;
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+		};
+
+	std::size_t c{ 0 };
+	auto it = mmap_file.begin() + offset;
+	for (; it != mmap_file.end(); it++, c++, offset++) {
+		if (read_4(it) == sentinel && skips > 0) {
+			skips -= 1;
+			it += 4; // skip header
+			offset += 4;
+			continue;
+		}
+		else if (read_4(it) == sentinel) {
+			it += 8; // offset past sentinel into length
+			length = read_4(it);
+			it += 4;
+			offset += 12 + length;
 			break;
 		}
 		if (c >= 100) {
@@ -84,6 +119,7 @@ std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file, std::siz
 	}
 	return std::span<std::uint8_t const>(it, it + length);
 }
+
 
 std::vector<std::string> file_read_header(std::span<std::uint8_t const>& header_keyvalue_section) {
 	std::vector<std::string> strings{};
@@ -100,6 +136,18 @@ std::vector<std::string> file_read_header(std::span<std::uint8_t const>& header_
 				strings.push_back(utf8::utf16to8(collect));
 			collect.clear();
 		}
+	}
+	// temporary. TODO: Do something with this data, properly.
+	if (!collect.empty()) {
+		std::string reinterpret{};
+		for (auto c : collect) {
+			char * chars = reinterpret_cast<char *>(&c);
+
+			reinterpret += std::string(chars,chars+1);
+		}
+
+		strings.push_back(reinterpret);
+		std::cout << "left: " << reinterpret << "\n";
 	}
 	return strings;
 }

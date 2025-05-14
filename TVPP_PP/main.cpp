@@ -14,14 +14,31 @@ int main()
 {
 	
 	mio::basic_mmap_source<std::uint8_t> mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
-	auto hdr = seek_header(mmap);
 	
+	std::size_t offset = 0;
+	// file info
+	auto hdr = seek_header(mmap,offset);
+	std::cout << offset << "\n";
+	// main thumbnail size
+	auto hdr2 = seek_header(mmap,offset);
+	std::cout << offset << "\n";
+	// main thumbnail
+	auto thumb1 = seek_3byteimbuffer(mmap, offset);
+	std::cout << offset << "\n";
+	std::cout << "after image buffer\n";
+	auto hdr3 = seek_header(mmap, offset, 6, 4096);
+
+	std::cout << offset << "\n";
+
 	auto read_hdr = file_read_header(hdr);
-	// for (auto i : read_hdr) {
-	// 	std::cout << "e:" << i << "\n";
-	// }
 	auto fileobj = parse_header_into_fileinfo(read_hdr);
 	print_fileinfo(fileobj);
+	
+	auto read_hdr3 = file_read_header(hdr3);
+	for (auto i : read_hdr3) {
+	 	std::cout << "e:" << i << "\n";
+	}
+
 
 	//std::size_t start_DBOD_block = 61907; //63435;
 	//std::size_t end_DBOD_block = 63656;
