@@ -16,7 +16,12 @@ int main()
 	mio::basic_mmap_source<std::uint8_t> mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
 	auto hdr = seek_header(mmap);
 	
-	file_read_header(hdr);
+	auto read_hdr = file_read_header(hdr);
+	// for (auto i : read_hdr) {
+	// 	std::cout << "e:" << i << "\n";
+	// }
+	auto fileobj = parse_header_into_fileinfo(read_hdr);
+	print_fileinfo(fileobj);
 
 	//std::size_t start_DBOD_block = 61907; //63435;
 	//std::size_t end_DBOD_block = 63656;

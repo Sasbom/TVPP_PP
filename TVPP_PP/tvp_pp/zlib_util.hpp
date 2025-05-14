@@ -86,6 +86,7 @@ std::vector<std::uint8_t> decompress_span_zlib(std::span<std::uint8_t const>& in
         while (offset < input_size) {
             mz_stream stream;
             std::memset(&stream, 0, sizeof(stream));
+
             stream.next_in = input + offset;
             stream.avail_in = input_size - offset;
 
