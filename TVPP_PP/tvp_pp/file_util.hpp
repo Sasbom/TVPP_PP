@@ -48,12 +48,8 @@ struct FileInfo {
 	bool save_video_deps;
 	std::vector<std::string> save_history;
 	double user_workduration;
-	std::string user_workchange; // don't know about this one yet.
+	std::size_t user_workchange;
 };
-
-
-
-// unknown sentinel info BC 40 11 D7 | �@�
 
 std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file,std::size_t& offset, std::size_t skips = 1, std::size_t max_read = 100 ) {
 	// 5A AF AA AB | Z¯ª«
@@ -123,9 +119,10 @@ std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, s
 
 std::vector<std::string> file_read_header(std::span<std::uint8_t const>& header_keyvalue_section) {
 	std::vector<std::string> strings{};
-	
 	std::u16string collect{};
-	for (auto it = header_keyvalue_section.begin(); it != header_keyvalue_section.end(); it += 2) {
+	// last 8 bytes are some footer to a header section like this ending in [33 8X XX XX | BC 40 11 D7]
+	// [BC 40 11 D7] is the sentinel where the section ends so we just need to cut 4 bytes.
+	for (auto it = header_keyvalue_section.begin(); it != header_keyvalue_section.end()-4; it += 2) {
 		auto cur_num = bigend_cast_from_ints<std::uint16_t>(*it, *(it + 1));
 		if (cur_num > 27) {
 			collect += static_cast<utf8::utfchar16_t>(cur_num);
@@ -137,17 +134,9 @@ std::vector<std::string> file_read_header(std::span<std::uint8_t const>& header_
 			collect.clear();
 		}
 	}
-	// temporary. TODO: Do something with this data, properly.
+	// take care of last bits
 	if (!collect.empty()) {
-		std::string reinterpret{};
-		for (auto c : collect) {
-			char * chars = reinterpret_cast<char *>(&c);
-
-			reinterpret += std::string(chars,chars+1);
-		}
-
-		strings.push_back(reinterpret);
-		std::cout << "left: " << reinterpret << "\n";
+		strings.push_back(utf8::utf16to8(collect));
 	}
 	return strings;
 }
@@ -190,6 +179,7 @@ FileInfo parse_header_into_fileinfo(std::vector<std::string>& headerinfo) {
 		{"SaveVideoDependencies", 30},
 		{"SaveHistory", 31},
 		{"UserWorkDuration", 32},
+		{"UserWorkChange", 33},
 	};
 	// this is going to suck.
 	for (auto it = headerinfo.begin(); it != headerinfo.end(); it++) {
@@ -370,6 +360,11 @@ FileInfo parse_header_into_fileinfo(std::vector<std::string>& headerinfo) {
 				it++;
 				break;
 			}
+			case 33: {
+				fi.user_workchange = data::parse_assume<int>(*(it + 1));
+				it++;
+				break;
+			}
 			}
 		}
 		else if (it->contains("UniqueID")) {
@@ -416,6 +411,7 @@ Save Video dependencies: {}
 History:
 {}
 Work Duration: {}
+Work Change: {}
 )",
 fi.width,fi.height,fi.fps,
 fi.pix_aspect_ratio,
@@ -429,7 +425,7 @@ fi.camera_width, fi.camera_height, fi.camera_field_order, fi.camera_fps,
 fi.camera_pix_aspect_ratio, fi.camera_aa,fi.camera_safearea,
 fi.camera_safearea_borderin, fi.camera_safearea_borderout,
 fi.is_locked,fi.is_protected,fi.password,fi.save_audio_deps,
-fi.save_video_deps,fi.save_history,fi.user_workduration
+fi.save_video_deps,fi.save_history,fi.user_workduration, fi.user_workchange
 );
 	std::cout << s;
 }
