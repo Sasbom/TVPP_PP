@@ -17,7 +17,7 @@ set(SOURCES
     "tvp_pp/structs/Buffer.hpp"
     "tvp_pp/structs/FileInfo.hpp"
     "tvp_pp/structs/FileInfo.cpp"
- "tvp_pp/structs/ThumbInfo.cpp")
+ "tvp_pp/structs/ThumbInfo.cpp" "tvp_pp/structs/Buffer.cpp")
 
 add_executable (TVPP_PP "main.cpp" ${SOURCES} )
 

@@ -6,10 +6,10 @@
 #include "tvp_pp/zlib_util.hpp"
 #include "tvp_pp/RLE.hpp"
 #include "tvp_pp/num_util.hpp"
-#include "tvp_pp/buffer.hpp"
 #include "tvp_pp/file_util.hpp"
 #include "tvp_pp/structs/FileInfo.hpp"
 #include "tvp_pp/structs/ThumbInfo.hpp"
+#include "tvp_pp/structs/Buffer.hpp"
 #include <fstream>
 
 int main()
@@ -42,7 +42,6 @@ int main()
 	for (auto i : read_hdr3) {
 	 	std::cout << "e:" << i << "\n";
 	}
-
 
 	//std::size_t start_DBOD_block = 61907; //63435;
 	//std::size_t end_DBOD_block = 63656;
