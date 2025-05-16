@@ -10,11 +10,11 @@ set(SOURCES
     "miniz/miniz.h"
     "tvp_pp/RLE.hpp"
     "tvp_pp/zlib_util.hpp"
-    "tvp_pp/buffer.hpp"
     "tvp_pp/num_util.hpp"
     "tvp_pp/file_util.hpp"
     "tvp_pp/frame_util.hpp"
     "tvp_pp/data.hpp"
+    "tvp_pp/structs/Buffer.hpp"
     "tvp_pp/structs/FileInfo.hpp"
     "tvp_pp/structs/FileInfo.cpp"
  "tvp_pp/structs/ThumbInfo.cpp")
