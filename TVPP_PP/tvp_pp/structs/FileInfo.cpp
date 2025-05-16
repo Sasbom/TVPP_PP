@@ -2,7 +2,7 @@
 #include <iostream>
 #include <unordered_map>
 #include "FileInfo.hpp"
-#include "../data.hpp"
+#include "../../tvp_pp/data.hpp"
 
 FileInfo::FileInfo(std::vector<std::string>& headerinfo) {
 	static std::unordered_map<std::string, std::size_t> methods = {

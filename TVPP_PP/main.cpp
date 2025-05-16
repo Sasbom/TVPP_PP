@@ -9,6 +9,7 @@
 #include "tvp_pp/buffer.hpp"
 #include "tvp_pp/file_util.hpp"
 #include "tvp_pp/structs/FileInfo.hpp"
+#include "tvp_pp/structs/ThumbInfo.hpp"
 #include <fstream>
 
 int main()
@@ -33,6 +34,10 @@ int main()
 	auto fileobj = FileInfo(read_hdr);
 	fileobj.print_info();
 	
+	auto read_hdr2 = file_read_header(hdr2);
+	auto thumbobj = ThumbInfo(read_hdr2);
+	thumbobj.print_info();
+
 	auto read_hdr3 = file_read_header(hdr3);
 	for (auto i : read_hdr3) {
 	 	std::cout << "e:" << i << "\n";

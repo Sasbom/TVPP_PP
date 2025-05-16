@@ -12,7 +12,7 @@ concept uintx_compatible = requires(I i, Ts&& ... t) {
 
 template<typename T = std::uint32_t, typename ... Ts>
 requires uintx_compatible<T, Ts...>
-std::remove_cvref_t<T> bigend_cast_from_ints(Ts&& ... nums) {
+inline std::remove_cvref_t<T> bigend_cast_from_ints(Ts&& ... nums) {
     auto shift = [g = (sizeof(T) * 8)](auto&& n) mutable {
         g -= sizeof(n) * 8;
         return g;
@@ -24,7 +24,7 @@ std::remove_cvref_t<T> bigend_cast_from_ints(Ts&& ... nums) {
 // cast seperate integers to a bigger integers (default 32bit uint)
 template<typename T = std::uint32_t, typename ... Ts>
     requires uintx_compatible<T, Ts...>
-std::remove_cvref_t<T> lilend_cast_from_ints(Ts&& ... nums) {
+inline std::remove_cvref_t<T> lilend_cast_from_ints(Ts&& ... nums) {
     auto shift = [g = 0](auto&& n) mutable {
         auto old_g = g;
         g += sizeof(n) * 8;
@@ -36,7 +36,7 @@ std::remove_cvref_t<T> lilend_cast_from_ints(Ts&& ... nums) {
 
 template<typename T = std::uint32_t>
 requires std::unsigned_integral<T> && (sizeof(T) > 1)
-void swap_endianness_uintx_inplace(T& num) {
+inline void swap_endianness_uintx_inplace(T& num) {
     std::uint8_t* n_ptr = reinterpret_cast<std::uint8_t*>(&num);
     std::size_t c{ 0 };
     for (auto i = n_ptr; i != n_ptr + (sizeof(num) / 2); i++, c++) {
@@ -49,7 +49,7 @@ void swap_endianness_uintx_inplace(T& num) {
 
 template<typename T = std::uint32_t>
     requires std::unsigned_integral<T> && (sizeof(T) > 1)
-T swap_endianness_uintx(T num) {
+inline T swap_endianness_uintx(T num) {
     swap_endianness_uintx_inplace(num);
     return num;
 }
