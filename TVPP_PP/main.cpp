@@ -8,11 +8,11 @@
 #include "tvp_pp/num_util.hpp"
 #include "tvp_pp/buffer.hpp"
 #include "tvp_pp/file_util.hpp"
+#include "tvp_pp/structs/FileInfo.hpp"
 #include <fstream>
 
 int main()
 {
-	
 	mio::basic_mmap_source<std::uint8_t> mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
 	
 	std::size_t offset = 0;
@@ -26,13 +26,12 @@ int main()
 	auto thumb1 = seek_3byteimbuffer(mmap, offset);
 	std::cout << offset << "\n";
 	std::cout << "after image buffer\n";
-	auto hdr3 = seek_header(mmap, offset, 6, 4096);
+	auto hdr3 = seek_header(mmap, offset, 4, 4096);
 
 	std::cout << offset << "\n";
-
 	auto read_hdr = file_read_header(hdr);
-	auto fileobj = parse_header_into_fileinfo(read_hdr);
-	print_fileinfo(fileobj);
+	auto fileobj = FileInfo(read_hdr);
+	fileobj.print_info();
 	
 	auto read_hdr3 = file_read_header(hdr3);
 	for (auto i : read_hdr3) {

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cmath>
 #include <variant>
 #include <string>
@@ -16,7 +17,7 @@ using entry_t = std::variant<std::string, int, double>;
 namespace data {
     
     namespace int_data {
-        int _char_to_int(char const & c) {
+        inline int _char_to_int(char const & c) {
             int n = static_cast<int>(c) - 48;
             if ((n >= 0) && (n < 10)) {
                 return n;
@@ -24,17 +25,17 @@ namespace data {
             return -1;
         }
 
-        bool _is_char_num(char const & c) {
+        inline bool _is_char_num(char const & c) {
             return (_char_to_int(c) != -1);
         }
 
-        int _parse_int(int gather, char c) {
+        inline int _parse_int(int gather, char c) {
             int n = _char_to_int(c);
 
             return (gather * 10) + n;
         }
 
-        double _parse_double(bool passed_comma, double gather, char c, int* decimal_point) {
+        inline double _parse_double(bool passed_comma, double gather, char c, int* decimal_point) {
             int n = _char_to_int(c);
             if (!passed_comma) {
                 gather = (gather * 10.0) + static_cast<double>(n);
@@ -46,7 +47,7 @@ namespace data {
             return gather;
         }
 
-        entry_t parse_string_to_entry(std::string const& entry, char const& ignore = ',', char const& float_point = '.') {
+        inline entry_t parse_string_to_entry(std::string const& entry, char const& ignore = ',', char const& float_point = '.') {
             if (entry.empty()) {
                 return entry;
             }
@@ -120,7 +121,7 @@ namespace data {
 
     template<typename T>
         requires is_assumable<T>
-    T parse_assume(std::string& entry) {
+    inline T parse_assume(std::string& entry) {
         auto proc_entry = int_data::parse_string_to_entry(entry);
         return std::get<T>(proc_entry);
     }
