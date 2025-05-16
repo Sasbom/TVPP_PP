@@ -44,7 +44,7 @@ std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file,std::size
 
 std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, std::size_t& offset, std::size_t skips = 0) {
 	// 5A AF AA AB | Z¯ª«
-	static std::uint32_t sentinel = 0x5AAFAAAB;
+	static std::uint32_t const sentinel = 0x5AAFAAAB;
 	//std::size_t skips = 1;
 	std::size_t length = 0;
 	auto read_4 = [](std::uint8_t const* it) {
@@ -68,6 +68,44 @@ std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, s
 			break;
 		}
 		if (c >= 100) {
+			break;
+		}
+	}
+	return std::span<std::uint8_t const>(it, it + length);
+}
+
+std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::size_t& offset) {
+	// ZCHK [4 byt] SRAW [4 byt] czmp [16byt] [Length ZLIB 4 byt] [ ZLIB BLOCK -> ]
+	static std::uint32_t const ZCHK = 0x5A43484B;
+	static std::uint32_t const SRAW = 0x53524157;
+	static std::uint32_t const czmp = 0x637A6D70;
+
+	std::size_t stage = 0;
+	std::size_t length = 0;
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+	};
+
+	auto it = mmap_file.begin() + offset;
+	for (; it != mmap_file.end(); it++, offset++) {
+		if (read_4(it) == ZCHK && stage == 0) {
+			it += 8; // skip header + 4 chksum bytes
+			offset += 8;
+			stage += 1;
+			continue;
+		}
+		if (read_4(it) == SRAW && stage == 1) {
+			it += 8; // skip header + 4 chksum bytes
+			offset += 8;
+			stage += 1;
+			continue;
+		}
+		if (read_4(it) == czmp && stage == 1) {
+			it += 20; // skip header + 16 bytes
+			length = read_4(it);
+			it += 4;
+			offset += 24;
+			stage += 1;
 			break;
 		}
 	}

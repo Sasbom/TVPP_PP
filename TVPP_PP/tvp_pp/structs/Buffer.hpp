@@ -39,6 +39,8 @@ struct Buffer {
 
 	cache_t cache;
 
+	bool has_buffer();
+
 	// override to define unroll behavior
 	virtual void unroll_source_to_cache() = 0;
 	virtual framebuf_raw_t get_framebuffer() = 0;

@@ -1,5 +1,9 @@
 #include "Buffer.hpp"
 
+bool Buffer::has_buffer() {
+	return cache.has_value();
+}
+
 Buffer_SRAW::Buffer_SRAW(FileInfo& info, std::span<std::uint8_t const> const & source) {
 	width = info.width;
 	height = info.height;
