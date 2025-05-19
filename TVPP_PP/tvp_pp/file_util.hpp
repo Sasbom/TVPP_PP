@@ -88,7 +88,7 @@ std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
 	};
 
-	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); it++, offset++) {
+	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); /*it++, offset++*/) {
 		if (read_4(it) == ZCHK && stage == 0) {
 			it += 8; // skip header + 4 chksum bytes
 			offset += 8;

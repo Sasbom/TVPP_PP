@@ -44,15 +44,20 @@ int main()
 	auto shot = Shot(read_hdr3);
 	shot.print_info();
 
-	offset = 104649;
-	auto dbod_span = seek_ZCHK_DBOD(mmap, offset);
-	std::cout << dbod_span.size() << "\n";
-	auto dbod = Buffer_DBOD(fileobj, dbod_span);
-	auto buf = dbod.get_framebuffer();
+	offset = 99907;
+	auto sraw_span = seek_ZCHK_SRAW(mmap, offset);
+	std::cout << sraw_span.size() << "\n";
+	auto sraw = Buffer_SRAW(fileobj, sraw_span);
+	auto buf = sraw.get_framebuffer();
 
 	std::cout << "Buffer size: " << buf.size() << "\n";
-	std::cout << dbod.width << " " << dbod.height << "\n";
-	stbi_write_png("test_img.png", dbod.width, dbod.height,4, buf.data(), dbod.width*4);
+	std::cout << sraw.width << " " << sraw.height << "\n";
+
+	std::ofstream file("sraw_dump.bin", std::ios::binary);
+	file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
+	file.close();
+
+	stbi_write_png("test_img_sraw.png", sraw.width, sraw.height,4, buf.data(), sraw.width*4);
 	std::cout << "\n\nHello CMake.\n" << "mmapped file length: "<< mmap.length() << "\n";
 	return 0;
 }

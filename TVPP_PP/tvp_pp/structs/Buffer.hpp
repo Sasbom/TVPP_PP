@@ -24,6 +24,7 @@ enum class buffer_t {
 enum class SRAW_block_t {
 	ZERO,
 	REPEAT,
+	FAILEDPARSE
 };
 
 // rolled up SRAW buffer
