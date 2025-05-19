@@ -67,7 +67,21 @@ struct Buffer_DBOD : public Buffer {
 	framebuf_raw_t get_framebuffer() override;
 };
 
-struct Frame {
+// always repeats 
+struct Buffer_SRAW_Repeat : public Buffer {
+	Buffer_SRAW_Repeat(Buffer_SRAW& source_sraw);
+
+	Buffer_SRAW& sraw_source;
+
+	void unroll_source_to_cache() override;
+	framebuf_raw_t get_framebuffer() override;
+};
+
+// Parses a layer, indexing where frames are stored in mapped memory offsets.
+// The first "Frame" is always of DBOD type.
+// TODO: The presence or absence of ZCHK should eventually be taken into account.
+//       We are assuming "TVPaint" (aka, zlib 78 01) compression is on right now.
+struct Layer {
 	loc_t location{};
 
 	std::size_t duration{};

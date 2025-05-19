@@ -21,3 +21,7 @@ Buffer_DBOD::Buffer_DBOD(FileInfo& info, std::span<std::uint8_t const> const & s
 void Buffer_SRAW::unroll_source_to_cache()  {
 
 }
+
+void Buffer_DBOD::unroll_source_to_cache() {
+	
+}

@@ -75,7 +75,8 @@ std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, s
 }
 
 std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::size_t& offset) {
-	// ZCHK [4 byt] SRAW [4 byt] czmp [16byt] [Length ZLIB 4 byt] [ ZLIB BLOCK -> ]
+	// ZCHK [4 byt] SRAW [4 byt] czmp [16byt] [Length ZLIB 4 byt] [ ZLIB BLOCKS -> ]
+	// The ZLIB blocks can contain multiple headers contiguously.
 	static std::uint32_t const ZCHK = 0x5A43484B;
 	static std::uint32_t const SRAW = 0x53524157;
 	static std::uint32_t const czmp = 0x637A6D70;
@@ -100,16 +101,81 @@ std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::
 			stage += 1;
 			continue;
 		}
-		if (read_4(it) == czmp && stage == 1) {
+		if (read_4(it) == czmp && stage == 2) {
 			it += 20; // skip header + 16 bytes
-			length = read_4(it);
+			length = read_4(it); // the length CAN NOT be read like this with DBOD headers.
 			it += 4;
 			offset += 24;
-			stage += 1;
 			break;
 		}
 	}
 	return std::span<std::uint8_t const>(it, it + length);
+}
+
+std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mmap_file, std::size_t& offset) {
+	// DBOD frames compressed are stored in zlib chunks that have 12 byte "sub headers" between them.
+	// This means that the initially read "length" before the compressed block doesn't tell us
+	// the whole story.
+	// DBOD [4 byt] czmp [16 byt] [len ZLIB block 4 byt] [ZLIB -> len ]
+	// followed by a 12 byte "sub header"??
+	// [8 bytes with some data] [4 byt next ZLIB block len] [ZLIB -> len]
+	// Unpacked it should be an RLE buffer that unrolls into a regular framebuffer.
+
+	static std::uint32_t const ZCHK = 0x5A43484B;
+	static std::uint32_t const DBOD = 0x44424F44;
+	static std::uint32_t const czmp = 0x637A6D70;
+
+	std::vector<std::span<std::uint8_t const>> spans{};
+
+	std::size_t stage = 0;
+	std::size_t length = 0;
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+		};
+
+	auto it = mmap_file.begin() + offset;
+	for (; it != mmap_file.end(); it++, offset++) {
+		if (read_4(it) == ZCHK && stage == 0) {
+			it += 8; // skip header + 4 chksum bytes
+			offset += 8;
+			stage += 1;
+			continue;
+		}
+		if (read_4(it) == DBOD && stage == 1) {
+			it += 8; // skip header + 4 chksum bytes
+			offset += 8;
+			stage += 1;
+			continue;
+		}
+		if (read_4(it) == czmp && stage == 2) {
+			// get initial length and append valid blocks of ZLIB data
+			it += 20; // skip header + 16 bytes
+			length = read_4(it); // initial block length
+			it += 4;
+			offset += 24;
+			spans.push_back(std::span(it, it + length));
+			it += length;
+			offset += length;
+			stage += 1;
+			continue;
+		}
+		// seek ZCHK
+		// at the end of ZLIB every block there's a 00 byte followed by ZCHK.
+		// so it + 1 should skip 00 and read out ZCHK
+		if (stage == 3 && read_4(it+1) != ZCHK) {
+			// if conditions are met parse 12 byte sub header.
+			it += 8;
+			length = read_4(it);
+			it += 4;
+			spans.push_back(std::span(it, it + length));
+			offset += 12+length;
+			continue;
+		}
+		else if (stage == 3 && read_4(it + 1) == ZCHK) {
+			break;
+		}
+	}
+	return spans;
 }
 
 std::vector<std::string> file_read_header(std::span<std::uint8_t const>& header_keyvalue_section) {
