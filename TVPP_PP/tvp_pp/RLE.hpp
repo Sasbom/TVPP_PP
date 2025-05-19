@@ -13,7 +13,7 @@ if (offset > data.size()) {\
 }\
 
 // Unroll VALID pixel RLE data. If not valid, returned value will contain std::nullopt.
-std::optional<std::vector<std::uint8_t>> unroll_rle(std::span<std::uint8_t>& data, std::size_t const & init_offset = 0) {
+std::optional<std::vector<std::uint8_t>> inline unroll_rle(std::span<std::uint8_t>& data, std::size_t const & init_offset = 0) {
 	std::vector<std::uint8_t> buffer{};
 	std::size_t offset = init_offset;
 

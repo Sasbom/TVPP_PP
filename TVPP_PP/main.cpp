@@ -10,6 +10,8 @@
 #include "tvp_pp/structs/FileInfo.hpp"
 #include "tvp_pp/structs/ThumbInfo.hpp"
 #include "tvp_pp/structs/Buffer.hpp"
+#include "tvp_pp/structs/Shot.hpp"
+#include "stb/stb_image_write.h"
 #include <fstream>
 
 int main()
@@ -39,46 +41,18 @@ int main()
 	thumbobj.print_info();
 
 	auto read_hdr3 = file_read_header(hdr3);
-	for (auto i : read_hdr3) {
-	 	std::cout << "e:" << i << "\n";
-	}
+	auto shot = Shot(read_hdr3);
+	shot.print_info();
 
-	//std::size_t start_DBOD_block = 61907; //63435;
-	//std::size_t end_DBOD_block = 63656;
+	offset = 104649;
+	auto dbod_span = seek_ZCHK_DBOD(mmap, offset);
+	std::cout << dbod_span.size() << "\n";
+	auto dbod = Buffer_DBOD(fileobj, dbod_span);
+	auto buf = dbod.get_framebuffer();
 
-	std::size_t start_DBOD_block = 63696; //63435;
-	std::size_t end_DBOD_block = 63720;
-
-	auto DBOD_span = std::span(mmap.begin() + start_DBOD_block,mmap.begin() + end_DBOD_block);
-
-    //decompress_multiple_zlib_streams(DBOD_span.data(),DBOD_span.size(), decompressed_val);
-	auto decompressed_val = decompress_span_zlib(DBOD_span);
-
-	auto headerless_span = std::span(decompressed_val.begin(), decompressed_val.end());
-	std::cout << "size: " << headerless_span.size() << "\n";
-	
-	//for (auto& it : decompressed_data.value()) {
-	//    std::cout << it;
-	//}
-
-	std::ofstream srawfile("test_dump_SRAW.bin", std::ios::binary);
-	srawfile.write(reinterpret_cast<char*>(headerless_span.data()), headerless_span.size());
-
-	srawfile.close();
-
-	return 0;
-	std::cout << swap_endianness_uintx(std::uint16_t(123)) << '\n';
-
-	auto unroll = unroll_rle(headerless_span,8);
-
-	std::cout << unroll.has_value();
-
-	auto unrollval = unroll.value();
-	std::ofstream file("test_dump_img.bin", std::ios::binary);
-	file.write(reinterpret_cast<char*>(unrollval.data()), unrollval.size());
-
-	file.close();
-
+	std::cout << "Buffer size: " << buf.size() << "\n";
+	std::cout << dbod.width << " " << dbod.height << "\n";
+	stbi_write_png("test_img.png", dbod.width, dbod.height,4, buf.data(), dbod.width*4);
 	std::cout << "\n\nHello CMake.\n" << "mmapped file length: "<< mmap.length() << "\n";
 	return 0;
 }

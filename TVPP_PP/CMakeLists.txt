@@ -24,7 +24,8 @@ set(SOURCES
     "tvp_pp/structs/Buffer.cpp"
     "tvp_pp/structs/Shot.hpp"
     "tvp_pp/structs/Shot.cpp"
-)
+     "stb/stb_image_write.h"
+ "stb/stb_image_write.cpp")
 
 add_executable (TVPP_PP "main.cpp" ${SOURCES} )
 

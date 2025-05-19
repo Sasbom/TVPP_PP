@@ -135,7 +135,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
 	};
 
-	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); it++, offset++) {
+	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); /*it++, offset++*/) {
 		if (read_4(it) == ZCHK && stage == 0) {
 			it += 8; // skip header + 4 chksum bytes
 			offset += 8;
@@ -152,6 +152,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 			// get initial length and append valid blocks of ZLIB data
 			it += 20; // skip header + 16 bytes
 			length = read_4(it); // initial block length
+			std::cout << length << "\n";
 			it += 4;
 			offset += 24;
 			spans.push_back(std::span(it, it + length));
@@ -161,20 +162,23 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 			continue;
 		}
 		// seek ZCHK
-		// at the end of ZLIB every block there's a 00 byte followed by ZCHK.
-		// so it + 1 should skip 00 and read out ZCHK
-		if (stage == 3 && read_4(it+1) != ZCHK) {
+		// at the end of ZLIB every block there's an (optional) 00 byte followed by ZCHK.
+		// so it + 1 should skip 00 and read out ZCHK (or not)
+		if (stage == 3 && ((read_4(it+1) != ZCHK) && (read_4(it) != ZCHK)) ) {
 			// if conditions are met parse 12 byte sub header.
 			it += 8;
 			length = read_4(it);
+			std::cout << length << "\n";
 			it += 4;
 			spans.push_back(std::span(it, it + length));
 			offset += 12+length;
+			it += length;
 			continue;
 		}
-		else if (stage == 3 && read_4(it + 1) == ZCHK) {
+		else if (stage == 3 && ((read_4(it + 1) == ZCHK) || (read_4(it) == ZCHK))) {
 			break;
 		}
+		
 	}
 	return spans;
 }
