@@ -58,7 +58,7 @@ bool decompress_zlib(uint8_t const * input, size_t input_size, std::vector<uint8
 }
 #endif
 
-std::vector<size_t> find_headers(std::span<std::uint8_t const>& input_span) {
+std::vector<size_t> inline find_headers(std::span<std::uint8_t const>& input_span) {
     std::vector<size_t> collect{};
 
     size_t c{};
@@ -74,7 +74,7 @@ std::vector<size_t> find_headers(std::span<std::uint8_t const>& input_span) {
 }
 
 // Seek headers and concatenate till everything is done.
-std::vector<std::uint8_t> decompress_span_zlib(std::span<std::uint8_t const>& input_span) {
+std::vector<std::uint8_t> inline decompress_span_zlib(std::span<std::uint8_t const>& input_span) {
     auto hdrs = find_headers(input_span);
     std::vector<std::uint8_t> output{};
 

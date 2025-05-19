@@ -10,6 +10,9 @@
 using loc_t = std::tuple<std::size_t, std::size_t>;
 using framebuf_raw_t = std::vector<uint8_t>;
 using cache_t = std::optional<framebuf_raw_t>;
+using flat_source_t = std::span<std::uint8_t const>;
+using vec_source_t = std::vector<std::span<std::uint8_t const>>;
+using source_t = std::variant<flat_source_t, vec_source_t>;
 
 enum class buffer_t {
 	DBOD_FILE,
@@ -35,7 +38,7 @@ struct Buffer {
 
 	buffer_t buffer_type{};
 
-	std::span<std::uint8_t const> source;
+	source_t source;
 
 	cache_t cache;
 
@@ -47,7 +50,7 @@ struct Buffer {
 };
 
 struct Buffer_SRAW : public Buffer {
-	Buffer_SRAW(FileInfo& info, std::span<std::uint8_t const> const & source);
+	Buffer_SRAW(FileInfo& info, source_t const & source);
 
 	constexpr static std::size_t SRAW_hdr_size = 24;
 	std::size_t block_size{};
@@ -59,7 +62,7 @@ struct Buffer_SRAW : public Buffer {
 };
 
 struct Buffer_DBOD : public Buffer {
-	Buffer_DBOD(FileInfo& info, std::span<std::uint8_t const> const & source);
+	Buffer_DBOD(FileInfo& info, source_t const & source);
 
 	constexpr static std::size_t DBOD_hdr_size = 8;
 

@@ -15,6 +15,7 @@ set(SOURCES
     "tvp_pp/frame_util.hpp"
     "tvp_pp/data.hpp"
     "tvp_pp/structs/Buffer.hpp"
+    "tvp_pp/structs/Buffer.cpp"
     "tvp_pp/structs/FileInfo.hpp"
     "tvp_pp/structs/FileInfo.cpp"
  "tvp_pp/structs/ThumbInfo.cpp" "tvp_pp/structs/Buffer.cpp")
