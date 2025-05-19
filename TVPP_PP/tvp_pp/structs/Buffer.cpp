@@ -23,6 +23,20 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 
 }
 
+framebuf_raw_t Buffer_SRAW::get_framebuffer() {
+	if (cache.has_value())
+		return cache.value();
+	//placeholder
+	return framebuf_raw_t{};
+}
+
 void Buffer_DBOD::unroll_source_to_cache() {
 	// for now, assume ZLIB
+}
+
+framebuf_raw_t Buffer_DBOD::get_framebuffer() {
+	if (cache.has_value())
+		return cache.value();
+	//placeholder
+	return framebuf_raw_t{};
 }
