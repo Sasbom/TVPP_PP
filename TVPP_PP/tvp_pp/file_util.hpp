@@ -183,6 +183,63 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 	return spans;
 }
 
+std::span<std::uint8_t const> seek_layer_header(mio::ummap_source& mmap_file, std::size_t& offset) {
+	// gather a span of layer data.
+	constexpr static std::uint32_t const LNAM = 0x4C4E414D;
+	constexpr static std::uint32_t const LNAW = 0x4C4E4157;
+	constexpr static std::uint32_t const LRHD = 0x4C524844;
+
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+	};
+
+	std::size_t stage{ 0 };
+	auto it = mmap_file.begin() + offset;
+	auto begin = mmap_file.begin() + offset;;
+	while(it != mmap_file.end()) {
+		if (stage == 0) {
+			if (read_4(it) == LNAM) {
+				stage += 1;
+				it += 4;
+				std::size_t lnam_len = read_4(it + 4);
+				it += lnam_len + 4;
+				offset += lnam_len + 8;
+			}
+			else {
+				offset++;
+				it++;
+			}
+		}
+		if (stage == 1) {
+			if (read_4(it) == LNAW) {
+				stage += 1;
+				it += 4;
+				std::size_t lnaw_len = read_4(it + 4);
+				it += lnaw_len + 4;
+				offset += lnaw_len + 8;
+			}
+			else {
+				// Failed...
+				break;
+			}
+		}
+		if (stage == 2) {
+			if (read_4(it) == LRHD) {
+				it += 4;
+				std::size_t lrhd_len = read_4(it + 4);
+				it += lrhd_len + 4;
+				offset += lrhd_len + 8;
+				return std::span(begin, it);
+			}
+			else {
+				// Failed...
+				break;
+			}
+		}
+	}
+	return std::span<std::uint8_t const>{}; // unreachable.
+}
+
 std::vector<std::string> file_read_header(std::span<std::uint8_t const>& header_keyvalue_section) {
 	std::vector<std::string> strings{};
 	std::u16string collect{};
