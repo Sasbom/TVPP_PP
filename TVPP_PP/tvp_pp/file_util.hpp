@@ -11,7 +11,7 @@
 #include "data.hpp"
 #include <utility>
 
-std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file,std::size_t& offset, std::size_t skips = 1, std::size_t max_read = 100 ) {
+std::span<std::uint8_t const> seek_header(mio::ummap_source& mmap_file,std::size_t& offset, std::size_t skips = 1, std::size_t max_read = 100) {
 	// 5A AF AA AB | Z¯ª«
 	constexpr static std::uint32_t sentinel = 0x5AAFAAAB;
 	//std::size_t skips = 1;

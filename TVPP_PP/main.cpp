@@ -11,6 +11,7 @@
 #include "tvp_pp/structs/ThumbInfo.hpp"
 #include "tvp_pp/structs/Buffer.hpp"
 #include "tvp_pp/structs/Shot.hpp"
+#include "tvp_pp/structs/Clip.hpp"
 #include "stb/stb_image_write.h"
 #include <fstream>
 
@@ -31,6 +32,8 @@ int main()
 	std::cout << "after image buffer\n";
 	auto hdr3 = seek_header(mmap, offset, 4, 4096);
 
+	auto hdr4 = seek_header(mmap, offset, 1, 2048);
+
 	std::cout << offset << "\n";
 	auto read_hdr = file_read_header(hdr);
 	auto fileobj = FileInfo(read_hdr);
@@ -44,6 +47,12 @@ int main()
 	auto shot = Shot(read_hdr3);
 	shot.print_info();
 
+	auto read_hdr4 = file_read_header(hdr4);
+	auto clip = Clip(read_hdr4);
+	clip.print_info();
+
+
+	return 0;
 	offset = 99907;
 	auto sraw_span = seek_ZCHK_SRAW(mmap, offset);
 	std::cout << sraw_span.size() << "\n";
