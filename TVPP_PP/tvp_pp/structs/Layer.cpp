@@ -68,19 +68,19 @@ void Layer::name_from_LNAM_LNAW(std::span<std::uint8_t const> const& lnam, std::
 }
 
 void Layer::unpack_layerflags(std::uint8_t const& layer_flags) {
-    constexpr static std::uint8_t const INVIS = 0b00000001;
-    constexpr static std::uint8_t const LIGHT = 0b00000010;
-    constexpr static std::uint8_t const STNCL = 0b00000100;
-    constexpr static std::uint8_t const LOCKD = 0b00010000;
-    constexpr static std::uint8_t const POSLK = 0b00100000;
-    constexpr static std::uint8_t const TRANS = 0b01000000;
+    constexpr static std::uint8_t const INVIS = 1 << 0;
+    constexpr static std::uint8_t const LIGHT = 1 << 1;
+    constexpr static std::uint8_t const STNCL = 1 << 2;
+    constexpr static std::uint8_t const LOCKD = 1 << 4;
+    constexpr static std::uint8_t const POSLK = 1 << 5;
+    constexpr static std::uint8_t const TRANS = 1 << 6;
 
-    this->invisible = ((layer_flags & INVIS) == INVIS);
-    this->lighttable = ((layer_flags & LIGHT) == LIGHT);
-    this->stencil = ((layer_flags & STNCL) == STNCL);
-    this->locked = ((layer_flags & LOCKD) == LOCKD);
-    this->position_locked = ((layer_flags & POSLK) == POSLK);
-    this->preserve_trans = ((layer_flags & TRANS) == TRANS);
+    this->invisible = ((layer_flags & INVIS) != 0);
+    this->lighttable = ((layer_flags & LIGHT) != 0);
+    this->stencil = ((layer_flags & STNCL) != 0);
+    this->locked = ((layer_flags & LOCKD) != 0);
+    this->position_locked = ((layer_flags & POSLK) != 0);
+    this->preserve_trans = ((layer_flags & TRANS) != 0);
 };
 
 void Layer::print_info() {
