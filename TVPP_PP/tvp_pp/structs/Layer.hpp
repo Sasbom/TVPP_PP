@@ -34,5 +34,5 @@ struct Layer {
 
 private:
 	void name_from_LNAM_LNAW(std::span<std::uint8_t const> const& LNAM, std::span<std::uint8_t const> const& LNAW);
-	void unpack_LRHD(std::span<std::uint8_t const> const& LRHD);
+	void unpack_layerflags(std::uint8_t const& layer_flags);
 };

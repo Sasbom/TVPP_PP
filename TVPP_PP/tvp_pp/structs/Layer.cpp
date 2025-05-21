@@ -1,5 +1,8 @@
 #include "Layer.hpp"
 #include "../num_util.hpp"
+#include <cmath>
+#include <format>
+#include <iostream>
 
 Layer::Layer(std::span<std::uint8_t const>& layer_info) {
 	auto read_4 = [](auto it) {
@@ -19,7 +22,25 @@ Layer::Layer(std::span<std::uint8_t const>& layer_info) {
 
     this->name_from_LNAM_LNAW(LNAM_span, LNAW_span);
 
+    //skip past LRHD
+    it += 4;
+    auto LRHD_len = read_4(it);
+    auto end = it + 4 + LRHD_len;
+    it += 4;
+    auto LRHD_end = it;
 
+    this->first_frame_num = read_4(it);
+    this->frame_offset = read_4(it+4);
+
+    this->opacity_byte = *(LRHD_end + 20-1);
+    this->opacity = std::round((static_cast<double>(this->opacity_byte)/255.0)*100);
+
+    std::uint8_t layer_flags = *(LRHD_end + 32-1);
+    this->unpack_layerflags(layer_flags);
+
+    this->repeat_out_type = *(LRHD_end + 46-1);
+    this->repeat_in_type = *(LRHD_end + 54-1);
+    this->group_id = *(LRHD_end + 58-1);
 }
 
 void Layer::name_from_LNAM_LNAW(std::span<std::uint8_t const> const& lnam, std::span<std::uint8_t const> const& lnaw) {
@@ -44,4 +65,45 @@ void Layer::name_from_LNAM_LNAW(std::span<std::uint8_t const> const& lnam, std::
         }
     }
     name =  collect;
+}
+
+void Layer::unpack_layerflags(std::uint8_t const& layer_flags) {
+    constexpr static std::uint8_t const INVIS = 0b00000001;
+    constexpr static std::uint8_t const LIGHT = 0b00000010;
+    constexpr static std::uint8_t const STNCL = 0b00000100;
+    constexpr static std::uint8_t const LOCKD = 0b00010000;
+    constexpr static std::uint8_t const POSLK = 0b00100000;
+    constexpr static std::uint8_t const TRANS = 0b01000000;
+
+    this->invisible = ((layer_flags & INVIS) == INVIS);
+    this->lighttable = ((layer_flags & LIGHT) == LIGHT);
+    this->stencil = ((layer_flags & STNCL) == STNCL);
+    this->locked = ((layer_flags & LOCKD) == LOCKD);
+    this->position_locked = ((layer_flags & POSLK) == POSLK);
+    this->preserve_trans = ((layer_flags & TRANS) == TRANS);
+};
+
+void Layer::print_info() {
+    auto s = std::format(R"(Layer:
+Name: {}
+Frame Offset: {}
+Repeat In / Repeat Out: {} / {}
+Group: {}
+
+Opacity: {}%
+
+Layer Flags:
+Invisible: {}
+Lighttable: {}
+Stencil Mode: {}
+Locked: {}
+Position Locked: {}
+Preserve Transparency: {}
+)",
+name, frame_offset, 
+repeat_in_type, repeat_out_type, 
+group_id, opacity,
+invisible, lighttable, stencil, locked, position_locked, preserve_trans
+);
+    std::cout << s;
 }

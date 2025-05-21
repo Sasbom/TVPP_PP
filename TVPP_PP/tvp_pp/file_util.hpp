@@ -183,6 +183,34 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 	return spans;
 }
 
+std::span<std::uint8_t const> seek_3bytimbuffer_XS24(mio::ummap_source& mmap_file, std::size_t& offset) {
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+	};
+	
+	constexpr static std::uint32_t const XS24 = 0x58533234;
+	auto it = mmap_file.begin() + offset;
+
+	std::size_t limit_read = 100;
+	while (true) {
+		if (limit_read == 0) {
+			break;
+		}
+
+		if (read_4(it) == XS24) {
+			it += 4;
+			auto length = read_4(it);
+			// XS24 [length] [ -> ...
+			offset += 8 + length;
+			return std::span(it + 4, it + length);
+		}
+		it++;
+		offset++;
+		limit_read--;
+	}
+	return std::span<std::uint8_t const>{};
+}
+
 std::span<std::uint8_t const> seek_layer_header(mio::ummap_source& mmap_file, std::size_t& offset) {
 	// gather a span of layer data.
 	constexpr static std::uint32_t const LNAM = 0x4C4E414D;
@@ -195,28 +223,38 @@ std::span<std::uint8_t const> seek_layer_header(mio::ummap_source& mmap_file, st
 
 	std::size_t stage{ 0 };
 	auto it = mmap_file.begin() + offset;
-	auto begin = mmap_file.begin() + offset;;
+	auto begin = mmap_file.begin() + offset;
 	while(it != mmap_file.end()) {
 		if (stage == 0) {
 			if (read_4(it) == LNAM) {
+				std::cout << "found LNAM";
+				begin = it;
 				stage += 1;
 				it += 4;
-				std::size_t lnam_len = read_4(it + 4);
+				offset += 4;
+				std::size_t lnam_len = read_4(it);
+				std::cout << "read length:" << lnam_len << " ";
 				it += lnam_len + 4;
-				offset += lnam_len + 8;
+				offset += lnam_len+ 4;
+				continue;
 			}
 			else {
+				std::cout << static_cast<char>(*it);
 				offset++;
 				it++;
+				continue;
 			}
 		}
 		if (stage == 1) {
 			if (read_4(it) == LNAW) {
+				std::cout << "Found LNAW";
 				stage += 1;
 				it += 4;
-				std::size_t lnaw_len = read_4(it + 4);
-				it += lnaw_len + 4;
-				offset += lnaw_len + 8;
+				offset += 4;
+				std::size_t lnaw_len = read_4(it);
+				it += lnaw_len+ 4;
+				offset += lnaw_len + 4;
+				continue;
 			}
 			else {
 				// Failed...
@@ -226,7 +264,7 @@ std::span<std::uint8_t const> seek_layer_header(mio::ummap_source& mmap_file, st
 		if (stage == 2) {
 			if (read_4(it) == LRHD) {
 				it += 4;
-				std::size_t lrhd_len = read_4(it + 4);
+				std::size_t lrhd_len = read_4(it);
 				it += lrhd_len + 4;
 				offset += lrhd_len + 8;
 				return std::span(begin, it);

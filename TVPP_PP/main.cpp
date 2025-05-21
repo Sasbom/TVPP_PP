@@ -12,6 +12,7 @@
 #include "tvp_pp/structs/Buffer.hpp"
 #include "tvp_pp/structs/Shot.hpp"
 #include "tvp_pp/structs/Clip.hpp"
+#include "tvp_pp/structs/Layer.hpp"
 #include "stb/stb_image_write.h"
 #include <fstream>
 
@@ -30,9 +31,17 @@ int main()
 	auto thumb1 = seek_3byteimbuffer(mmap, offset);
 	std::cout << offset << "\n";
 	std::cout << "after image buffer\n";
+	//Shot info
 	auto hdr3 = seek_header(mmap, offset, 4, 4096);
-
+	std::cout << offset << "\n";
+	// Clip info
 	auto hdr4 = seek_header(mmap, offset, 1, 2048);
+	std::cout << offset << "\n";
+	//XS24IMBUFFER
+	auto hdr5 = seek_3bytimbuffer_XS24(mmap, offset);
+	std::cout << offset << "\n";
+	std::cout << "seeking layer" << "\n";
+	auto hdr6 = seek_layer_header(mmap, offset);
 
 	std::cout << offset << "\n";
 	auto read_hdr = file_read_header(hdr);
@@ -51,7 +60,8 @@ int main()
 	auto clip = Clip(read_hdr4);
 	clip.print_info();
 
-
+	auto layer = Layer(hdr6);
+	layer.print_info();
 	return 0;
 	offset = 99907;
 	auto sraw_span = seek_ZCHK_SRAW(mmap, offset);

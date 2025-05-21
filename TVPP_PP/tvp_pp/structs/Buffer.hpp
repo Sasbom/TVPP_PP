@@ -85,11 +85,11 @@ struct Buffer_SRAW_Repeat : public Buffer {
 // The first "Frame" is always of DBOD type.
 // TODO: The presence or absence of ZCHK should eventually be taken into account.
 //       We are assuming "TVPaint" (aka, zlib 78 01) compression is on right now.
-struct Layer {
-	loc_t location{};
-
-	std::size_t duration{};
-	std::size_t start{};
-
-	cache_t cached_buffer{};
-};
+//struct Layer {
+//	loc_t location{};
+//
+//	std::size_t duration{};
+//	std::size_t start{};
+//
+//	cache_t cached_buffer{};
+//};
