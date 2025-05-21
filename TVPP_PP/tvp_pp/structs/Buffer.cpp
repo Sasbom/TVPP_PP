@@ -16,6 +16,14 @@ Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source) {
 	this->source = source;
 }
 
+Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source){
+	sraw_source = &source;
+};
+
+Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_DBOD& source) {
+	sraw_source = &source;
+};
+
 Buffer_DBOD::Buffer_DBOD(FileInfo& info, source_t const & source) {
 	width = info.width;
 	height = info.height;
@@ -170,4 +178,18 @@ framebuf_raw_t Buffer_DBOD::get_framebuffer() {
 		return cache.value();
 	else
 		return framebuf_raw_t{};
+}
+
+void Buffer_SRAW_Repeat::unroll_source_to_cache() {
+	if (sraw_source.index() == 0)
+		std::get<0>(sraw_source)->unroll_source_to_cache();
+	if (sraw_source.index() == 1)
+		std::get<1>(sraw_source)->unroll_source_to_cache();
+}
+
+framebuf_raw_t Buffer_SRAW_Repeat::get_framebuffer() {	
+	if (sraw_source.index() == 0)
+		return std::get<0>(sraw_source)->get_framebuffer();
+	if (sraw_source.index() == 1)
+		return std::get<1>(sraw_source)->get_framebuffer();
 }

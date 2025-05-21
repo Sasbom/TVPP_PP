@@ -14,6 +14,7 @@ using flat_source_t = std::span<std::uint8_t const>;
 using vec_source_t = std::vector<std::span<std::uint8_t const>>;
 using source_t = std::variant<flat_source_t, vec_source_t>;
 
+
 enum class buffer_t {
 	DBOD_FILE,
     SRAW_FILE,
@@ -72,10 +73,13 @@ struct Buffer_DBOD : public Buffer {
 };
 
 // always repeats 
-struct Buffer_SRAW_Repeat : public Buffer {
+struct Buffer_SRAW_Repeat: public Buffer{
+	// implements the buffer interface
+	using buffer_source = std::variant<Buffer_DBOD*, Buffer_SRAW*>;
+	Buffer_SRAW_Repeat(Buffer_DBOD& source_sraw);
 	Buffer_SRAW_Repeat(Buffer_SRAW& source_sraw);
 
-	Buffer_SRAW& sraw_source;
+	buffer_source sraw_source;
 
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;

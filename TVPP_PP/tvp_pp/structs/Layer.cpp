@@ -43,8 +43,10 @@ Layer::Layer(std::span<std::uint8_t const>& layer_info) {
     this->group_id = *(LRHD_end + 58-1);
 }
 
+// watch out with this, end of line ? into utf-8 bytes not handled properly. 
+// I'm wondering if I can't just grab the LNAW and LNAM both.
 void Layer::name_from_LNAM_LNAW(std::span<std::uint8_t const> const& lnam, std::span<std::uint8_t const> const& lnaw) {
-    std::string collect{};
+    /*std::string collect{};
     std::size_t posm = 0;
     for (auto i = lnaw.begin(); i != lnaw.end(); i++) {
         if (*i == lnam[posm]) {
@@ -64,7 +66,10 @@ void Layer::name_from_LNAM_LNAW(std::span<std::uint8_t const> const& lnam, std::
             }
         }
     }
-    name =  collect;
+    name =  collect;*/
+
+    name_ascii = std::string(lnam.begin(), lnam.end() - 1);
+    name = std::string(lnaw.begin(), lnaw.end() - 1);
 }
 
 void Layer::unpack_layerflags(std::uint8_t const& layer_flags) {

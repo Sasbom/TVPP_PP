@@ -12,6 +12,7 @@ set(SOURCES
     "tvp_pp/zlib_util.hpp"
     "tvp_pp/num_util.hpp"
     "tvp_pp/file_util.hpp"
+    "tvp_pp/file_util.cpp"
     "tvp_pp/frame_util.hpp"
     "tvp_pp/data.hpp"
     "tvp_pp/structs/Buffer.hpp"
