@@ -1,8 +1,11 @@
 #include "Layer.hpp"
 #include "../num_util.hpp"
+#include "../file_util.hpp"
 #include <cmath>
 #include <format>
 #include <iostream>
+#include <filesystem>
+#include "../../stb/stb_image_write.h"
 
 Layer::Layer(std::span<std::uint8_t const>& layer_info) {
 	auto read_4 = [](auto it) {
@@ -111,4 +114,110 @@ group_id, opacity,
 invisible, lighttable, stencil, locked, position_locked, preserve_trans
 );
     std::cout << s;
+}
+
+void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileInfo& fileinfo) {
+    auto read_4 = [](std::uint8_t const* it) {
+        return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+    };
+    constexpr static std::uint32_t const ZCHK = 0x5A43484B;
+    constexpr static std::uint32_t const DBOD = 0x44424F44;
+    constexpr static std::uint32_t const SRAW = 0x53524157;
+    constexpr static std::uint32_t const LEXT = 0x4C455854;
+
+    auto it = mmap.begin() + offset;
+
+    Buffer_SRAW_Repeat::buffer_source last{};
+
+    while (true) {
+        auto hdr = read_4(it);
+
+        if (hdr == LEXT)
+            break;
+
+        if (hdr == ZCHK) {
+            //std::cout << "ZCHK!\n";
+            auto sig = read_4(it + 8);
+            //std::cout << "signal" << sig << "\n";
+            if (sig == DBOD) {
+                std::cout << "DBOD!\n";
+                // deal with DBOD
+                auto dbod_source = seek_ZCHK_DBOD(mmap, offset);
+                frames.push_back(std::make_unique<buffer_var>(Buffer_DBOD(fileinfo, dbod_source)));
+                last = &std::get<0>(*frames[frames.size()-1].get());
+                //std::cout << "offset: " << offset << "\n";
+                it = mmap.begin() + offset;
+                continue;
+            }
+            if (sig == SRAW) {
+                //std::cout << "SRAW! Checking if repeat.\n";
+                // first, check for repeat
+                auto _c0 = *(it + 15);
+                auto _2f = *(it + 23);
+                auto _01 = *(it + 27);
+                auto _64 = *(it + 31);
+                //std::cout << int(_c0) << " " << int(_2f) << " " << int(_01) << " " << int(_64) << "\n";
+                auto sraw_source = seek_ZCHK_SRAW(mmap, offset);
+                if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
+                    std::cout << "SRAW REPEAT!\n";
+                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
+                    it = mmap.begin() + offset;
+                    continue;
+                }
+                else {
+                    std::cout << "SRAW OG!\n";
+                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source)));
+                    last = &std::get<1>(*frames[frames.size() - 1].get());
+                    it = mmap.begin() + offset;
+                    continue;
+                }
+            }
+        }
+        //std::cout << "skipping 1\n";
+        offset++;
+        it++;
+    }
+}
+
+void Layer::dump_frames(std::string const& prefix, std::string const& folder_name, FileInfo& file_info) {
+    namespace fs = std::filesystem;
+    
+    std::string path = folder_name+"\\";
+    auto fpath = fs::path(folder_name);
+    fs::create_directory(fpath);
+
+    std::size_t framenr = frame_offset + first_frame_num;
+
+    auto pad = [](std::size_t const& num, std::size_t len = 4) {
+        auto str = std::to_string(num);
+        while (str.length() != len) {
+            str.insert(str.begin(), '0');
+        }
+        return str;
+    };
+
+    for (auto& frame : frames) {
+        auto fullpath = path + std::format("{}_{}_{}.png", name_ascii,prefix, pad(framenr));
+        auto ptr = frame.get();
+
+        std::cout << "Writing out " << fullpath << "\n";
+
+        framebuf_raw_t fr{};
+        if (ptr->index() == 0) {
+            auto& lyr = std::get<0>(*ptr);
+            fr = lyr.get_framebuffer();
+        } else if (ptr->index() == 1) {
+            auto& lyr = std::get<1>(*ptr);
+            fr = lyr.get_framebuffer();
+        }
+        else if (ptr->index() == 2) {
+            auto& lyr = std::get<2>(*ptr);
+            fr = lyr.get_framebuffer();
+        }
+        //std::cout << "writing it. " << fr.size() << "\n";
+        stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
+        framenr += 1;
+    }
+
+
 }

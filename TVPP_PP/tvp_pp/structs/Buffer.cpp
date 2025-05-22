@@ -4,6 +4,7 @@
 #include "../num_util.hpp"
 #include <iostream>
 #include <cstring>
+#include <fstream>
 
 bool Buffer::has_buffer() {
 	return cache.has_value();
@@ -18,6 +19,10 @@ Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source) {
 
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source){
 	sraw_source = &source;
+};
+
+Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(buffer_source source) {
+	sraw_source = source;
 };
 
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_DBOD& source) {
@@ -37,7 +42,6 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 		std::cout << "Source incorrect\n";
 		return;
 	}
-
 	// source has to be a contiguously packed ZLIB block with multiple headers, no shenanigans in between like in DBOD
 	auto src = std::get<0>(source);
 	auto rolled_buffer = decompress_span_zlib(src);
@@ -51,8 +55,25 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	this->block_size = read_4(begin + 8);
 	std::size_t thumbnail_offset = read_4(begin + 12);
 
+	//std::ofstream file("sraw_dump_buffer.bin", std::ios::binary);
+	//file.write(reinterpret_cast<const char*>(rolled_buffer.data()), rolled_buffer.size());
+	//file.close();
+
+	auto check_valid = [&](auto it) {
+		for (std::size_t i{ 0 }; i < 4; i++) {
+			if (it + i == rolled_buffer.end()) {
+				return false;
+			}
+		}
+		return true;
+	};
+
 	// start reading from thumnbail onwards into interim buffer.
 	for (auto it = rolled_buffer.begin() + 20 + thumbnail_offset; it != rolled_buffer.end();/* it++ */) {
+		
+		if (!check_valid(it))
+			break;
+
 		std::size_t length = read_4(it);
 		if (length == 0) {
 			std::size_t repeat_type = read_4(it + 8);
@@ -72,8 +93,10 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 			}
 			else {
 				this->interim_buffer.push_back(SRAW_block_t::FAILEDPARSE);
+				std::cout << "FAILED\n";
 			}
 			it += length;
+
 		}
 	}
 
@@ -138,10 +161,9 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 framebuf_raw_t Buffer_SRAW::get_framebuffer() {
 	if (cache.has_value())
 		return cache.value();
-
 	this->unroll_source_to_cache();
 
-	if (cache.has_value())
+	if (cache.has_value()) 
 		return cache.value();
 	else
 		return framebuf_raw_t{};

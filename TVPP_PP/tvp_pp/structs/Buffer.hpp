@@ -78,6 +78,7 @@ struct Buffer_SRAW_Repeat: public Buffer{
 	using buffer_source = std::variant<Buffer_DBOD*, Buffer_SRAW*>;
 	Buffer_SRAW_Repeat(Buffer_DBOD& source_sraw);
 	Buffer_SRAW_Repeat(Buffer_SRAW& source_sraw);
+	Buffer_SRAW_Repeat(buffer_source source_sraw);
 
 	buffer_source sraw_source;
 

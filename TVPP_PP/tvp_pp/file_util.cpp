@@ -105,7 +105,7 @@ std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::
 			it += 20; // skip header + 16 bytes
 			length = read_4(it); // the length CAN NOT be read like this with DBOD headers.
 			it += 4;
-			offset += 24;
+			offset += 24 + length;
 			return std::span<std::uint8_t const>(it, it + length);
 		}
 	}
@@ -152,7 +152,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 			// get initial length and append valid blocks of ZLIB data
 			it += 20; // skip header + 16 bytes
 			length = read_4(it); // initial block length
-			std::cout << length << "\n";
+			//std::cout << length << "\n";
 			it += 4;
 			offset += 24;
 			spans.push_back(std::span(it, it + length));
@@ -168,7 +168,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 			// if conditions are met parse 12 byte sub header.
 			it += 8;
 			length = read_4(it);
-			std::cout << length << "\n";
+			//std::cout << length << "\n";
 			it += 4;
 			spans.push_back(std::span(it, it + length));
 			offset += 12+length;
@@ -227,19 +227,19 @@ std::span<std::uint8_t const> seek_layer_header(mio::ummap_source& mmap_file, st
 	while(it != mmap_file.end()) {
 		if (stage == 0) {
 			if (read_4(it) == LNAM) {
-				std::cout << "found LNAM";
+				//std::cout << "found LNAM";
 				begin = it;
 				stage += 1;
 				it += 4;
 				offset += 4;
 				std::size_t lnam_len = read_4(it);
-				std::cout << "read length:" << lnam_len << " ";
+				//std::cout << "read length:" << lnam_len << " ";
 				it += lnam_len + 4;
 				offset += lnam_len+ 4;
 				continue;
 			}
 			else {
-				std::cout << static_cast<char>(*it);
+				//std::cout << static_cast<char>(*it);
 				offset++;
 				it++;
 				continue;
@@ -247,7 +247,7 @@ std::span<std::uint8_t const> seek_layer_header(mio::ummap_source& mmap_file, st
 		}
 		if (stage == 1) {
 			if (read_4(it) == LNAW) {
-				std::cout << "Found LNAW";
+				//std::cout << "Found LNAW";
 				stage += 1;
 				it += 4;
 				offset += 4;

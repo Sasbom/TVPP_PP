@@ -62,9 +62,17 @@ int main()
 
 	auto layer = Layer(hdr6);
 	layer.print_info();
+
+	layer.read_into_layer(mmap, offset, fileobj);
+	std::cout << "Frames found: " << layer.frames.size() << "\n";
+	layer.dump_frames("test", "dump", fileobj);
 	return 0;
-	offset = 99907;
+
+
+	offset = 63721;
 	auto sraw_span = seek_ZCHK_SRAW(mmap, offset);
+	std::cout << "offset: " << offset << "\n";
+	//return 0;
 	std::cout << sraw_span.size() << "\n";
 	auto sraw = Buffer_SRAW(fileobj, sraw_span);
 	auto buf = sraw.get_framebuffer();
