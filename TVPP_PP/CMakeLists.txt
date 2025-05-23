@@ -21,6 +21,8 @@ set(SOURCES
     "tvp_pp/structs/FileInfo.cpp"
     "tvp_pp/structs/ThumbInfo.hpp"
     "tvp_pp/structs/ThumbInfo.cpp" 
+    "tvp_pp/structs/File.hpp"
+    "tvp_pp/structs/File.cpp"
     "tvp_pp/structs/Buffer.hpp" 
     "tvp_pp/structs/Buffer.cpp"
     "tvp_pp/structs/Shot.hpp"

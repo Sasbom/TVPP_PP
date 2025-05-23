@@ -6,7 +6,7 @@
 struct ThumbInfo {
 
 	ThumbInfo(std::vector<std::string>& thumbinfo);
-
+	ThumbInfo() = default;
 	std::size_t width{};
 	std::size_t height{};
 

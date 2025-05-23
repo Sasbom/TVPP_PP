@@ -6,7 +6,7 @@
 
 struct Shot {
 	Shot(std::vector<std::string>& headerinfo);
-	
+	Shot() = default;
 	std::string name{};
 	std::size_t drawings{};
 

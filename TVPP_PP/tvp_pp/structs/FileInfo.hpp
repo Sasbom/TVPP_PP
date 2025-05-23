@@ -8,6 +8,7 @@
 struct FileInfo {
 
 	FileInfo(std::vector<std::string>& headerinfo);
+	FileInfo() = default;
 
 	std::size_t width{};
 	std::size_t height{};

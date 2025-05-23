@@ -7,6 +7,13 @@
 #include <filesystem>
 #include "../../stb/stb_image_write.h"
 
+#ifdef VERBOSE
+#define LOG(message) std::cout << message << "\n"; 
+#else
+#define LOG(message)
+#endif
+
+
 Layer::Layer(std::span<std::uint8_t const>& layer_info) {
 	auto read_4 = [](auto it) {
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
@@ -140,7 +147,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
             auto sig = read_4(it + 8);
             //std::cout << "signal" << sig << "\n";
             if (sig == DBOD) {
-                std::cout << "DBOD!\n";
+                LOG("DBOD!");
                 // deal with DBOD
                 auto dbod_source = seek_ZCHK_DBOD(mmap, offset);
                 frames.push_back(std::make_unique<buffer_var>(Buffer_DBOD(fileinfo, dbod_source)));
@@ -159,13 +166,13 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 //std::cout << int(_c0) << " " << int(_2f) << " " << int(_01) << " " << int(_64) << "\n";
                 auto sraw_source = seek_ZCHK_SRAW(mmap, offset);
                 if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
-                    std::cout << "SRAW REPEAT!\n";
+                    LOG("SRAW REPEAT!\n");
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
                     it = mmap.begin() + offset;
                     continue;
                 }
                 else {
-                    std::cout << "SRAW OG!\n";
+                    LOG("SRAW OG!");
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source)));
                     last = &std::get<1>(*frames[frames.size() - 1].get());
                     it = mmap.begin() + offset;

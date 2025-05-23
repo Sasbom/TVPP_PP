@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <string>
 #include <vector>
+#include <memory>
+#include "Layer.hpp"
 
 struct Clip {
 	Clip(std::vector<std::string>& headerinfo);
@@ -20,6 +22,8 @@ struct Clip {
 	std::size_t mark_out_pos{};
 	bool hidden{};
 	std::size_t color_idx{};
+
+	std::vector<std::unique_ptr<Layer>> layers{};
 
 	void print_info();
 };

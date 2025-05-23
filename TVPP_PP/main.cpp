@@ -13,13 +13,17 @@
 #include "tvp_pp/structs/Shot.hpp"
 #include "tvp_pp/structs/Clip.hpp"
 #include "tvp_pp/structs/Layer.hpp"
+#include "tvp_pp/structs/File.hpp"
 #include "stb/stb_image_write.h"
 #include <fstream>
 
 int main()
 {
 	mio::basic_mmap_source<std::uint8_t> mmap("C:/Users/Astudio/Documents/TVPaintTests/DeBal/bal_3.tvpp");
-	
+	auto tvp_file = File(mmap);
+	tvp_file.dump_file();
+	return 0;
+
 	std::size_t offset = 0;
 	// file info
 	auto hdr = seek_header(mmap,offset);
@@ -65,7 +69,7 @@ int main()
 
 	layer.read_into_layer(mmap, offset, fileobj);
 	std::cout << "Frames found: " << layer.frames.size() << "\n";
-	//layer.dump_frames("test", "dump", fileobj);
+	layer.dump_frames("test", "dump", fileobj);
 
 	auto next = seek_LEXT_UDAT_STCK_FCFG(mmap, offset);
 	std::cout << int(next);
