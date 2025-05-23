@@ -65,7 +65,19 @@ int main()
 
 	layer.read_into_layer(mmap, offset, fileobj);
 	std::cout << "Frames found: " << layer.frames.size() << "\n";
-	layer.dump_frames("test", "dump", fileobj);
+	//layer.dump_frames("test", "dump", fileobj);
+
+	auto next = seek_LEXT_UDAT_STCK_FCFG(mmap, offset);
+	std::cout << int(next);
+
+	auto hdr7 = seek_layer_header(mmap, offset);
+	auto layer2 = Layer(hdr7);
+	layer2.print_info();
+
+	layer2.read_into_layer(mmap, offset, fileobj);
+	layer2.dump_frames("test", "dump_bg", fileobj);
+	std::cout << "Frames found: " << layer2.frames.size() << "\n";
+
 	return 0;
 
 

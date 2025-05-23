@@ -197,7 +197,7 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
     };
 
     for (auto& frame : frames) {
-        auto fullpath = path + std::format("{}_{}_{}.png", name_ascii,prefix, pad(framenr));
+        auto fullpath = path + std::format("{}_{}_{}.png", name_ascii.c_str(), prefix, pad(framenr));
         auto ptr = frame.get();
 
         std::cout << "Writing out " << fullpath << "\n";

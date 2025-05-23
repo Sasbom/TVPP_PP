@@ -183,6 +183,89 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 	return spans;
 }
 
+LEXT_AFTER seek_LEXT_UDAT_STCK_FCFG(mio::ummap_source& mmap_file, std::size_t& offset) {
+	// skip past data at the end of a layer, to potentially end up at a new clip,
+	// another new layer, or the end of a file.
+	
+	constexpr static std::uint32_t const LEXT = 0x4C455854;
+	constexpr static std::uint32_t const UDAT = 0x55444154;
+	constexpr static std::uint32_t const STCK = 0x5354434B;
+	constexpr static std::uint32_t const XSRC = 0x58535243;
+	constexpr static std::uint32_t const FCFG = 0x46434647;
+
+	constexpr static std::uint32_t const LNAM = 0x4C4E414D;
+
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+	};
+
+	auto check_valid = [&](std::uint8_t const* it) {
+		for (std::size_t i{ 0 }; i < 4; i++) {
+			if (it + i == mmap_file.end()) {
+				return false;
+			}
+		}
+		return true;
+	};
+
+	std::size_t stage{ 0 };
+	auto it = mmap_file.begin()+offset;
+
+	while (true) {
+		if ((stage == 0) && (read_4(it) == LEXT)) {
+			auto len = read_4(it + 4);
+			offset += 8 + len;
+			it += 8 + len;
+			stage++;
+			continue;
+		}
+
+		if ((stage == 1) && (read_4(it) == UDAT)) {
+			auto len = read_4(it + 4);
+			offset += 8 + len;
+			it += 8 + len;
+			stage++;
+			continue;
+		}
+
+		// stage 2 can branch off into LNAM.
+		if ((stage == 2) && (read_4(it) == LNAM)) {
+			return LEXT_AFTER::LAYER;
+		}
+
+		if ((stage == 2) && (read_4(it) == STCK)) {
+			auto len = read_4(it + 4);
+			offset += 8 + len;
+			it += 8 + len;
+			stage++;
+			continue;
+		}
+
+		if ((stage == 3) && (read_4(it) == XSRC)) {
+			auto len = read_4(it + 4);
+			offset += 8 + len;
+			it += 8 + len;
+			stage++;
+			continue;
+		}
+
+		if ((stage == 4) && (read_4(it) == FCFG)) {
+			auto len = read_4(it + 4);
+			offset += 8 + len;
+			it += 8 + len;
+			if (!check_valid(it)) {
+				return LEXT_AFTER::TVP_EOF;
+			}
+			break;
+		}
+
+		it++;
+		offset++;
+	}
+
+	return LEXT_AFTER::CLIP;
+}
+
 std::span<std::uint8_t const> seek_3bytimbuffer_XS24(mio::ummap_source& mmap_file, std::size_t& offset) {
 	auto read_4 = [](std::uint8_t const* it) {
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
