@@ -75,56 +75,55 @@ std::vector<size_t> inline find_headers(std::span<std::uint8_t const>& input_spa
 
 // Seek headers and concatenate till everything is done.
 std::vector<std::uint8_t> inline decompress_span_zlib(std::span<std::uint8_t const>& input_span) {
-    auto hdrs = find_headers(input_span);
+    //auto hdrs = find_headers(input_span);
+    // don't seperate on found headers. This was based on an earlier (wrong) assumption
     std::vector<std::uint8_t> output{};
 
-    for (auto h : hdrs) {
-        std::size_t offset = h;
-        std::size_t input_size = input_span.size();
-        auto input = input_span.data();
+    std::size_t offset = 0;
+    std::size_t input_size = input_span.size();
+    auto input = input_span.data();
 
-        while (offset < input_size) {
-            mz_stream stream;
-            std::memset(&stream, 0, sizeof(stream));
+    while (offset < input_size) {
+        mz_stream stream;
+        std::memset(&stream, 0, sizeof(stream));
 
-            stream.next_in = input + offset;
-            stream.avail_in = input_size - offset;
+        stream.next_in = input + offset;
+        stream.avail_in = input_size - offset;
 
-            // Set up output buffer (4mb / chunk)
-            std::size_t const chunkSize = 4096;
-            std::vector<std::uint8_t> outChunk(chunkSize);
+        // Set up output buffer (4mb / chunk)
+        std::size_t const chunkSize = 4096;
+        std::vector<std::uint8_t> outChunk(chunkSize);
 
-            if (inflateInit(&stream) != Z_OK) {
-                std::cerr << "Failed to initialize inflate" << std::endl;
+        if (inflateInit(&stream) != Z_OK) {
+            std::cerr << "Failed to initialize inflate" << std::endl;
+            return std::vector<std::uint8_t>{};
+        }
+
+        int status;
+        do {
+            stream.next_out = outChunk.data();
+            stream.avail_out = chunkSize;
+
+            status = inflate(&stream, Z_NO_FLUSH);
+            if (status != Z_OK && status != Z_STREAM_END) {
+                std::cerr << "Decompression error: " << status << std::endl;
+                inflateEnd(&stream);
                 return std::vector<std::uint8_t>{};
             }
 
-            int status;
-            do {
-                stream.next_out = outChunk.data();
-                stream.avail_out = chunkSize;
+            std::size_t have = chunkSize - stream.avail_out;
+            output.insert(output.end(), outChunk.begin(), outChunk.begin() + have);
 
-                status = inflate(&stream, Z_NO_FLUSH);
-                if (status != Z_OK && status != Z_STREAM_END) {
-                    std::cerr << "Decompression error: " << status << std::endl;
-                    inflateEnd(&stream);
-                    return std::vector<std::uint8_t>{};
-                }
+        } while (status != Z_STREAM_END);
 
-                std::size_t have = chunkSize - stream.avail_out;
-                output.insert(output.end(), outChunk.begin(), outChunk.begin() + have);
+        offset += stream.total_in; // Advance to next stream (if any)
+        inflateEnd(&stream);
 
-            } while (status != Z_STREAM_END);
+        if (offset >= input_size)
+            break;
 
-            offset += stream.total_in; // Advance to next stream (if any)
-            inflateEnd(&stream);
-
-            if (offset >= input_size)
-                break;
-
-            input += stream.total_in;
-            input_size -= stream.total_in;
-        }
+        input += stream.total_in;
+        input_size -= stream.total_in;
     }
 
     return output;

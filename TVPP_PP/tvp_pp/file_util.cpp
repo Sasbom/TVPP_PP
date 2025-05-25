@@ -75,6 +75,7 @@ std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, s
 	return std::span<std::uint8_t const>(it, it + length);
 }
 
+// DEPECRATE?
 std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::size_t& offset) {
 	// ZCHK [4 byt] SRAW [4 byt] czmp [16byt] [Length ZLIB 4 byt] [ ZLIB BLOCKS -> ]
 	// The ZLIB blocks can contain multiple headers contiguously.
@@ -86,7 +87,7 @@ std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::
 	std::size_t length = 0;
 	auto read_4 = [](std::uint8_t const* it) {
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
-	};
+		};
 
 	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); /*it++, offset++*/) {
 		if (read_4(it) == ZCHK && stage == 0) {
@@ -111,6 +112,93 @@ std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::
 	}
 	// NOTE: throw after recieved object is size 0.s 
 	std::span<std::uint8_t const> backup{};
+}
+
+std::vector<std::span<std::uint8_t const>> seek_ZCHK_SRAW_VEC(mio::ummap_source& mmap_file, std::size_t& offset) {
+	// DBOD frames compressed are stored in zlib chunks that have 12 byte "sub headers" between them.
+	// This means that the initially read "length" before the compressed block doesn't tell us
+	// the whole story.
+	// DBOD [4 byt] czmp [16 byt] [len ZLIB block 4 byt] [ZLIB -> len ]
+	// followed by a 12 byte "sub header"??
+	// [8 bytes with some data] [4 byt next ZLIB block len] [ZLIB -> len]
+	// Unpacked it should be an RLE buffer that unrolls into a regular framebuffer.
+
+	constexpr static std::uint32_t const ZCHK = 0x5A43484B;
+	constexpr static std::uint32_t const SRAW = 0x53524157;
+	constexpr static std::uint32_t const czmp = 0x637A6D70;
+	constexpr static std::uint32_t const LEXT = 0x4C455854;
+
+	std::vector<std::span<std::uint8_t const>> spans{};
+
+	std::size_t stage = 0;
+	std::size_t length = 0;
+
+	auto check_valid = [&](std::uint8_t const* it) {
+		for (std::size_t i{ 0 }; i < 4; i++) {
+			if (it + i == mmap_file.end()) {
+				return false;
+			}
+		}
+		return true;
+		};
+
+	auto read_4 = [](std::uint8_t const* it) {
+		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+		};
+
+	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); /*it++, offset++*/) {
+		if (read_4(it) == ZCHK && stage == 0) {
+			std::cout << "found ZCHK!\n";
+			it += 8; // skip header + 4 chksum bytes
+			offset += 8;
+			stage += 1;
+			continue;
+		}
+		if (read_4(it) == SRAW && stage == 1) {
+			std::cout << "found SRAW!\n";
+			it += 8; // skip header + 4 chksum bytes
+			offset += 8;
+			stage += 1;
+			continue;
+		}
+		if (read_4(it) == czmp && stage == 2) {
+			// get initial length and append valid blocks of ZLIB data
+			it += 20; // skip header + 16 bytes
+			offset += 20;
+			std::cout << "reading length @" << offset << "\n";
+			length = read_4(it); // initial block length
+			std::cout << "read length " << length << "\n";
+			//std::cout << length << "\n";
+			it += 4;
+			offset += 4;
+			spans.push_back(std::span(it, it + length));
+			it += length;
+			offset += length;
+			stage += 1;
+			continue;
+		}
+		if ((stage == 3 && ((read_4(it + 1) == ZCHK) || (read_4(it) == ZCHK))) || (stage == 3 && ((read_4(it + 1) == LEXT) || (read_4(it) == LEXT)))) {
+			std::cout << "ZCHK OR LEXT ENCOUNTERED\n";
+			break;
+		}
+		// seek ZCHK
+		// at the end of ZLIB every block there's an (optional) 00 byte followed by ZCHK.
+		// so it + 1 should skip 00 and read out ZCHK (or not)
+		if (stage == 3 && (read_4(it + 1) != ZCHK) && (read_4(it) != ZCHK) && (read_4(it + 1) != LEXT) && (read_4(it) != LEXT)) {
+			
+			// if conditions are met parse 12 byte sub header.
+			it += 8;
+			offset += 8;
+			length = read_4(it);
+			std::cout << length << " @ offset: " << offset << "\n";
+			it += 4;
+			spans.push_back(std::span(it, it + length));
+			offset += 4 + length;
+			it += length;
+			continue;
+		}
+	}
+	return spans;
 }
 
 std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mmap_file, std::size_t& offset) {

@@ -23,6 +23,8 @@ std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, s
 
 std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::size_t& offset);
 
+std::vector<std::span<std::uint8_t const>> seek_ZCHK_SRAW_VEC(mio::ummap_source& mmap_file, std::size_t& offset);
+
 std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mmap_file, std::size_t& offset);
 
 LEXT_AFTER seek_LEXT_UDAT_STCK_FCFG(mio::ummap_source& mmap_file, std::size_t& offset);

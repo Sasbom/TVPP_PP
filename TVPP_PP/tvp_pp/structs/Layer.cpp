@@ -6,6 +6,9 @@
 #include <iostream>
 #include <filesystem>
 #include "../../stb/stb_image_write.h"
+#include <fstream>
+
+#define VERBOSE
 
 #ifdef VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
@@ -164,15 +167,16 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 auto _01 = *(it + 27);
                 auto _64 = *(it + 31);
                 //std::cout << int(_c0) << " " << int(_2f) << " " << int(_01) << " " << int(_64) << "\n";
-                auto sraw_source = seek_ZCHK_SRAW(mmap, offset);
                 if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
                     LOG("SRAW REPEAT!\n");
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
+                    offset += 64;
                     it = mmap.begin() + offset;
                     continue;
                 }
                 else {
                     LOG("SRAW OG!");
+                    auto sraw_source = seek_ZCHK_SRAW_VEC(mmap, offset);
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source)));
                     last = &std::get<1>(*frames[frames.size() - 1].get());
                     it = mmap.begin() + offset;
@@ -205,6 +209,7 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
 
     for (auto& frame : frames) {
         auto fullpath = path + std::format("{}_{}_{}.png", name_ascii.c_str(), prefix, pad(framenr));
+        auto fullpathbin = path + std::format("{}_{}_{}.bin", name_ascii.c_str(), prefix, pad(framenr));
         auto ptr = frame.get();
 
         std::cout << "Writing out " << fullpath << "\n";
@@ -222,6 +227,10 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
             fr = lyr.get_framebuffer();
         }
         //std::cout << "writing it. " << fr.size() << "\n";
+        auto f = std::ofstream(fullpathbin.c_str(), std::ios::binary);
+        f.write(reinterpret_cast<char*>(fr.data()), fr.size());
+        f.close();
+
         stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
         framenr += 1;
     }

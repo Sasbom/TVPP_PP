@@ -1,5 +1,6 @@
 #include "File.hpp"
 #include <filesystem>
+#include <iostream>
 File::File(mio::ummap_source& mmap) {
 	offset = 0;
 	
@@ -27,8 +28,9 @@ void File::clip_cycle(mio::ummap_source& mmap) {
 		auto clip_hdr = seek_header(mmap, offset, 1, 2048);
 		auto clip_hdr_read = file_read_header(clip_hdr);
 		clips.push_back(std::make_unique<Clip>(clip_hdr_read));
-	
+		clips.back()->print_info();
 		// Skip FORM TVPP XS24
+		std::cout << offset << "\n";
 		seek_3bytimbuffer_XS24(mmap, offset);
 		
 		next = LEXT_AFTER::LAYER;
@@ -39,6 +41,7 @@ void File::clip_cycle(mio::ummap_source& mmap) {
 			clips.back()->layers.back()->read_into_layer(mmap, offset, file_info);
 
 			next = seek_LEXT_UDAT_STCK_FCFG(mmap, offset);
+			std::cout << int(next) << "\n";
 		}
 	}
 }
@@ -58,6 +61,7 @@ void File::dump_file() {
 		
 		for (auto& l : c->layers) {
 			std::string folder = std::format("{}_{}\\{}", base, c->name.c_str(),l->name_ascii.c_str());
+			std::cout << l->name << "\n";
 			l->dump_frames("filedump", folder.c_str(), file_info);
 		}
 	}

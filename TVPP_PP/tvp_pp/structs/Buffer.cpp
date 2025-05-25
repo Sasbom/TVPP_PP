@@ -5,6 +5,13 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <format>
+
+SRAW_block_s::SRAW_block_s(SRAW_block_t const& SRAW_type, std::size_t const& element_nr = 9999, std::size_t const & source_frame = 0) {
+	block_t = SRAW_type;
+	this->element_nr = element_nr;
+	this->source_frame = source_frame;
+}
 
 bool Buffer::has_buffer() {
 	return cache.has_value();
@@ -38,13 +45,23 @@ Buffer_DBOD::Buffer_DBOD(FileInfo& info, source_t const & source) {
 
 void Buffer_SRAW::unroll_source_to_cache()  {
 	// for now, assume ZLIB
-	if (source.index() != 0) {
+	if (source.index() != 1) {
 		std::cout << "Source incorrect\n";
 		return;
 	}
 	// source has to be a contiguously packed ZLIB block with multiple headers, no shenanigans in between like in DBOD
-	auto src = std::get<0>(source);
-	auto rolled_buffer = decompress_span_zlib(src);
+	// EDIT: Nevermind. This can happen all the same.
+	//auto src = std::get<0>(source);
+	//auto rolled_buffer = decompress_span_zlib(src);
+
+	auto src = std::get<1>(source);
+	auto rolled_buffer = framebuf_raw_t{};
+
+	for (auto& src_span : src) {
+		auto dec = decompress_span_zlib(src_span);
+		rolled_buffer.insert(rolled_buffer.end(), dec.begin(), dec.end());
+	}
+
 	// SRAW [4 byt len] [block size] [len thumb + 4] [thumb w] [thumb h]
 
 	auto read_4 = [](auto it) {
@@ -67,7 +84,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 		}
 		return true;
 	};
-
+	std::size_t offset = 20 + thumbnail_offset;
 	// start reading from thumnbail onwards into interim buffer.
 	for (auto it = rolled_buffer.begin() + 20 + thumbnail_offset; it != rolled_buffer.end();/* it++ */) {
 		
@@ -76,11 +93,10 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 
 		std::size_t length = read_4(it);
 		if (length == 0) {
+			std::size_t source_frame = read_4(it + 4);
 			std::size_t repeat_type = read_4(it + 8);
-			if (repeat_type > 0)
-				this->interim_buffer.push_back(SRAW_block_t::REPEAT);
-			else
-				this->interim_buffer.push_back(SRAW_block_t::ZERO);
+			// ALWAYS repeat type.
+			this->interim_buffer.push_back(SRAW_block_s(SRAW_block_t::REPEAT,repeat_type,source_frame));
 			it += 12;
 			continue;
 		}
@@ -92,7 +108,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 				this->interim_buffer.push_back(buf.value());
 			}
 			else {
-				this->interim_buffer.push_back(SRAW_block_t::FAILEDPARSE);
+				this->interim_buffer.push_back(SRAW_block_s(SRAW_block_t::FAILEDPARSE));
 				std::cout << "FAILED\n";
 			}
 			it += length;
@@ -101,7 +117,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	}
 
 	auto unpack_all = framebuf_raw_t{};
-	unpack_all.resize(this->width * this->height * 4); //prealloc
+	unpack_all.resize(this->width * this->height * 4,255); //prealloc
 
 	std::size_t stride = 4;
 
@@ -111,50 +127,76 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	std::size_t wblocks = std::ceil(this->width / this->block_size);
 	std::size_t hblocks = std::ceil(this->height / this->block_size);
 	
-	auto unpack_block_into_frame = [&](std::size_t const& c, framebuf_raw_t& buf) {
-		long int xb = c % wblocks;
-		long int yb = std::floor(c / wblocks);
 
-		std::size_t start_offset = ((yb * block_size * width) + (xb * block_size)) * stride;
 
+	auto unpack_block_into_frame = [&](std::size_t const& index, framebuf_raw_t& buffer) {
+		long int xb = index % wblocks;
+		long int yb = std::floor(index / wblocks);
+
+		std::size_t start_offset = (yb * block_size * width * stride) + (xb * block_size * stride);
 		using lint = long int;
 
-		long int xb_w = std::min(std::abs(lint(block_size) - (((xb + 1) * lint(block_size)) % lint(width))), lint(block_size));
-		long int yb_w = std::min(std::abs(lint(block_size) - (((yb + 1) * lint(block_size)) % lint(height))), lint(block_size));
+		long int xb_w = std::min(block_size, width - xb * block_size);
+		long int yb_w = std::min(block_size, height - yb * block_size);
 
 		std::size_t local_y{ 0 };
-		//std::cout << "unrolling..\n";
 		for (; local_y < yb_w; local_y++) {
 			auto start_row = unpack_all.data() + start_offset + (local_y * width * stride);
-			std::copy(buf.data() + (local_y * xb_w * stride), buf.data() + (xb_w * (local_y + 1) * stride), start_row);
+			memcpy(start_row, buffer.data() + (local_y * xb_w * stride), (xb_w* stride));
+			//std::copy(buffer.data() + (local_y * xb_w * stride), buffer.data() + (xb_w * (local_y + 1) * stride), start_row);
 		}
 	};
 
+	std::size_t idx{ 0 };
 	for (auto& el : this->interim_buffer) {
 		if (el.index() == 0) {
-			auto& buf = std::get<0>(el);
-			last_buf = &buf;
-			unpack_block_into_frame(c, buf);
+			//std::cout << "RLE! " << c << "\n";
+			//last_buf = &buf;
+			//std::cout << std::format("buffer RLE\n{}\n", buf);
+
+			unpack_block_into_frame(idx, std::get<0>(el));
+			idx++;
 		}
 		else if (el.index() == 1) {
 			auto action = std::get<1>(el);
-			if (action == SRAW_block_t::ZERO) {
+			if (action.block_t == SRAW_block_t::ZERO) {
+				// LEGACY: NO SUCH THING AS ZERO.
+				std::cout << "ZERO! " << idx << "\n";
 				// do nothing because preallocated with 0 memory.
 			}
-			else if (action == SRAW_block_t::REPEAT) {
-				if (last_buf != nullptr) {
-					auto& buf = *last_buf;
-					unpack_block_into_frame(c, buf);
+			else if (action.block_t == SRAW_block_t::REPEAT) {
+				//if (last_buf != nullptr) {
+				//	std::cout << "REPEAT! " << idx << "\n";
+				//	idx++;
+				//	auto& buf = *last_buf;
+				//	unpack_block_into_frame(c, buf); // do nothing to test
+				//}
+				if (action.element_nr < this->interim_buffer.size()) {
+					// fetch "asked for" RLE buffer.
+					auto ref_el = this->interim_buffer[action.element_nr];
+					if (ref_el.index() == 0) {
+						//std::cout << "REPEAT! " << c << "\n";
+						unpack_block_into_frame(idx, std::get<0>(ref_el));
+					}
+					else {
+						// BIG TODO!
+						// reading one byte isn't good enough, we need awareness off the layers before.
+						// how this exactly works, I have no idea, but I do know how to figure it out.
+						//std::cout << "reference missed!\n" << action.element_nr << " @ " << action.source_frame << "\n";
+					}
 				}
 			}
-			else if (action == SRAW_block_t::FAILEDPARSE) {
+			else if (action.block_t == SRAW_block_t::FAILEDPARSE) {
 				//std::cout << "FAILED PARSE!" << "\n";
 				cache = std::nullopt;
 				return;
 			}
+			idx++;
 		}
+		//break;
 		c++;
 	}
+	//std::cout << "length interim = " << interim_buffer.size() << "\n";
 	cache = unpack_all;
 }
 
@@ -180,7 +222,7 @@ void Buffer_DBOD::unroll_source_to_cache() {
 
 	auto src = std::get<1>(source);
 	auto rolled_buffer = framebuf_raw_t{};
-	
+
 	for (auto& src_span : src) {
 		auto dec = decompress_span_zlib(src_span);
 		rolled_buffer.insert(rolled_buffer.end(), dec.begin(), dec.end());

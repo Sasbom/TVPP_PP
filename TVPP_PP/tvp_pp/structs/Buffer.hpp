@@ -28,8 +28,15 @@ enum class SRAW_block_t {
 	FAILEDPARSE
 };
 
+struct SRAW_block_s {
+	SRAW_block_s(SRAW_block_t const& SRAW_type, std::size_t const & element_nr, std::size_t const& source_frame);
+	SRAW_block_t block_t{};
+	std::size_t element_nr{};
+	std::size_t source_frame{};
+};
+
 // rolled up SRAW buffer
-using sraw_buffer_el_t = std::variant<framebuf_raw_t, SRAW_block_t>;
+using sraw_buffer_el_t = std::variant<framebuf_raw_t, SRAW_block_s>;
 using sraw_buffer_t = std::vector<sraw_buffer_el_t>;
 
 struct Buffer {
