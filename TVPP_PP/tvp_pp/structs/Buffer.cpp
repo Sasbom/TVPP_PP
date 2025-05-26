@@ -1,4 +1,5 @@
 #define NOMINMAX
+#include <cmath>
 #include "Buffer.hpp"
 #include "../zlib_util.hpp"
 #include "../RLE.hpp"
@@ -7,7 +8,6 @@
 #include <cstring>
 #include <fstream>
 #include <format>
-#include <cmath>
 #include "Layer.hpp"
 
 SRAW_block_s::SRAW_block_s(SRAW_block_t const& SRAW_type, std::size_t const& element_nr = 9999, std::size_t const & source_frame = 0) {
@@ -247,7 +247,11 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 		//break;
 		c++;
 	}
-	//std::cout << "length interim = " << interim_buffer.size() << "\n";
+
+	// Clear interim cache.
+	this->interim_buffer.clear();
+	this->interim_buffer.shrink_to_fit();
+
 	cache = unpack_all;
 }
 

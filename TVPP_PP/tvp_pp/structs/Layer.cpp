@@ -8,8 +8,6 @@
 #include "../../stb/stb_image_write.h"
 #include <fstream>
 
-#define VERBOSE
-
 #ifdef VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
 #else
@@ -237,7 +235,7 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
         //f.write(reinterpret_cast<char*>(fr.data()), fr.size());
         //f.close();
 
-        //stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
+        stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
         framenr += 1;
     }
 
