@@ -1,3 +1,4 @@
+#define NOMINMAX
 #include "Buffer.hpp"
 #include "../zlib_util.hpp"
 #include "../RLE.hpp"
@@ -6,6 +7,8 @@
 #include <cstring>
 #include <fstream>
 #include <format>
+#include <cmath>
+#include "Layer.hpp"
 
 SRAW_block_s::SRAW_block_s(SRAW_block_t const& SRAW_type, std::size_t const& element_nr = 9999, std::size_t const & source_frame = 0) {
 	block_t = SRAW_type;
@@ -17,15 +20,47 @@ bool Buffer::has_buffer() {
 	return cache.has_value();
 }
 
-Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source) {
+framebuf_raw_t Buffer::sample_block(std::size_t index, std::size_t block_size) {
+	if (!has_buffer()) {
+		return framebuf_raw_t{};
+	}
+	
+	std::size_t stride = 4;
+
+	std::size_t wblocks = std::ceil(this->width / block_size);
+	std::size_t hblocks = std::ceil(this->height / block_size);
+
+	long int xb = index % wblocks;
+	long int yb = std::floor(index / wblocks);
+
+	std::size_t start_offset = (yb * block_size * width * stride) + (xb * block_size * stride);
+	using lint = long int;
+
+	long int xb_w = std::min(block_size, width - xb * block_size);
+	long int yb_w = std::min(block_size, height - yb * block_size);
+
+	auto& from_buffer = this->cache.value();
+
+	framebuf_raw_t to_buffer{};
+	to_buffer.resize(xb_w * yb_w * stride);
+
+	for (std::size_t y{ 0 }; y < yb_w; y++) {
+		auto start_row = from_buffer.data() + start_offset + (y * width * stride);
+		memcpy(to_buffer.data()+(y*stride*xb_w), start_row, (xb_w * stride));
+	}
+	return to_buffer;
+}
+
+Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source, std::shared_ptr<Layer> layer) : layer(layer) {
 	width = info.width;
 	height = info.height;
 	buffer_type = buffer_t::SRAW_FRAME;
 	this->source = source;
 }
 
-Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source){
+Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source) {
 	sraw_source = &source;
+
 };
 
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(buffer_source source) {
@@ -36,7 +71,7 @@ Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_DBOD& source) {
 	sraw_source = &source;
 };
 
-Buffer_DBOD::Buffer_DBOD(FileInfo& info, source_t const & source) {
+Buffer_DBOD::Buffer_DBOD(FileInfo& info, source_t const& source, std::shared_ptr<Layer> layer): layer(layer) {
 	width = info.width;
 	height = info.height;
 	buffer_type = buffer_t::DBOD_FRAME;
@@ -172,19 +207,58 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 				//	unpack_block_into_frame(c, buf); // do nothing to test
 				//}
 				if (action.element_nr < this->interim_buffer.size()) {
-					// fetch "asked for" RLE buffer.
-					auto ref_el = this->interim_buffer[action.element_nr];
-					if (ref_el.index() == 0) {
-						//std::cout << "REPEAT! " << c << "\n";
-						unpack_block_into_frame(idx, std::get<0>(ref_el));
+					if (action.source_frame == 0) {
+						auto ref_el = this->interim_buffer[action.element_nr];
+						if (ref_el.index() == 0) {
+							//std::cout << "REPEAT! " << c << "\n";
+							unpack_block_into_frame(idx, std::get<0>(ref_el));
+						}
 					}
-					else {
-						// BIG TODO!
-						// reading one byte isn't good enough, we need awareness off the layers before.
-						// how this exactly works, I have no idea, but I do know how to figure it out.
-						//std::cout << "reference missed!\n" << action.element_nr << " @ " << action.source_frame << "\n";
+					else if(auto ulayer = this->layer.lock()){
+						auto real_frame = ulayer->frames_unique_idx.at(action.source_frame);
+						auto& source = ulayer->frames.at(real_frame);
+						if (source.get()->index() == 0) {
+							auto& dbod = std::get<0>(*source.get());
+							auto buf = dbod.sample_block(action.element_nr, block_size);
+							unpack_block_into_frame(idx, buf);
+						}
+						else if (source.get()->index() == 1) {
+							auto& sraw = std::get<1>(*source.get());
+							auto buf = sraw.sample_block(action.element_nr, block_size);
+							unpack_block_into_frame(idx, buf);
+						}
 					}
 				}
+
+
+				//if (action.element_nr < this->interim_buffer.size()) {
+				//	if (auto ulayer = this->layer.lock()) {
+				//		auto real_frame = ulayer->frames_unique_idx.at(action.source_frame);
+				//		auto& source = ulayer->frames.at(real_frame);
+				//		if (source.get()->index() == 0) {
+				//			auto& dbod = std::get<0>(*source.get());
+				//			auto buf = dbod.sample_block(action.element_nr, block_size);
+				//			unpack_block_into_frame(idx, buf);
+				//		}
+				//		else if (source.get()->index() == 1) {
+				//			auto& sraw = std::get<1>(*source.get());
+				//			auto buf = sraw.sample_block(action.element_nr, block_size);
+				//			unpack_block_into_frame(idx, buf);
+				//		}
+				//	}
+					
+					// fetch "asked for" RLE buffer.
+					//auto ref_el = this->interim_buffer[action.element_nr];
+					//if (ref_el.index() == 0) {
+					//	//std::cout << "REPEAT! " << c << "\n";
+					//	unpack_block_into_frame(idx, std::get<0>(ref_el));
+					//}
+					//else {
+					//	// BIG TODO!
+					//	// reading one byte isn't good enough, we need awareness off the layers before.
+					//	// how this exactly works, I have no idea, but I do know how to figure it out.
+					//	//std::cout << "reference missed!\n" << action.element_nr << " @ " << action.source_frame << "\n";
+					//}
 			}
 			else if (action.block_t == SRAW_block_t::FAILEDPARSE) {
 				//std::cout << "FAILED PARSE!" << "\n";

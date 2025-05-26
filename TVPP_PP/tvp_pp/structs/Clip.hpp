@@ -6,7 +6,7 @@
 #include <memory>
 #include "Layer.hpp"
 
-struct Clip {
+struct Clip{
 	Clip(std::vector<std::string>& headerinfo);
 	
 	std::string name{};
@@ -23,7 +23,7 @@ struct Clip {
 	bool hidden{};
 	std::size_t color_idx{};
 
-	std::vector<std::unique_ptr<Layer>> layers{};
+	std::vector<std::shared_ptr<Layer>> layers{};
 
 	void print_info();
 };

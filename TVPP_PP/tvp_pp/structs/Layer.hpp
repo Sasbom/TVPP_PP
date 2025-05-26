@@ -10,13 +10,18 @@
 #include "../../mio/single_include/mio/mio.hpp"
 #include "Buffer.hpp"
 
-struct Layer {
+struct Layer: std::enable_shared_from_this<Layer> {
 	using buffer_var = std::variant<Buffer_DBOD, Buffer_SRAW, Buffer_SRAW_Repeat>;
 	using buffer_vec = std::vector<std::unique_ptr<buffer_var>>;
 
-	Layer(std::span<std::uint8_t const>& layer_info);
+	Layer(std::span<std::uint8_t const>& layer_info, std::size_t const & clip_idx, std::size_t const& layer_idx);
+
+	std::size_t clip_idx{};
+	std::size_t layer_idx{};
 
 	buffer_vec frames{};
+	// maps where DBOD and SRAW (unique frames) are stored in this->frames
+	std::vector<std::size_t> frames_unique_idx{};
 
 	std::string name{};
 	std::string name_ascii{};

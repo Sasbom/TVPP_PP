@@ -148,14 +148,14 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_SRAW_VEC(mio::ummap_source&
 
 	for (auto it = mmap_file.begin() + offset; it != mmap_file.end(); /*it++, offset++*/) {
 		if (read_4(it) == ZCHK && stage == 0) {
-			std::cout << "found ZCHK!\n";
+			//std::cout << "found ZCHK!\n";
 			it += 8; // skip header + 4 chksum bytes
 			offset += 8;
 			stage += 1;
 			continue;
 		}
 		if (read_4(it) == SRAW && stage == 1) {
-			std::cout << "found SRAW!\n";
+			//std::cout << "found SRAW!\n";
 			it += 8; // skip header + 4 chksum bytes
 			offset += 8;
 			stage += 1;
@@ -165,9 +165,9 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_SRAW_VEC(mio::ummap_source&
 			// get initial length and append valid blocks of ZLIB data
 			it += 20; // skip header + 16 bytes
 			offset += 20;
-			std::cout << "reading length @" << offset << "\n";
+			//std::cout << "reading length @" << offset << "\n";
 			length = read_4(it); // initial block length
-			std::cout << "read length " << length << "\n";
+			//std::cout << "read length " << length << "\n";
 			//std::cout << length << "\n";
 			it += 4;
 			offset += 4;
@@ -178,7 +178,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_SRAW_VEC(mio::ummap_source&
 			continue;
 		}
 		if ((stage == 3 && ((read_4(it + 1) == ZCHK) || (read_4(it) == ZCHK))) || (stage == 3 && ((read_4(it + 1) == LEXT) || (read_4(it) == LEXT)))) {
-			std::cout << "ZCHK OR LEXT ENCOUNTERED\n";
+			//std::cout << "ZCHK OR LEXT ENCOUNTERED\n";
 			break;
 		}
 		// seek ZCHK
@@ -190,7 +190,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_SRAW_VEC(mio::ummap_source&
 			it += 8;
 			offset += 8;
 			length = read_4(it);
-			std::cout << length << " @ offset: " << offset << "\n";
+			//std::cout << length << " @ offset: " << offset << "\n";
 			it += 4;
 			spans.push_back(std::span(it, it + length));
 			offset += 4 + length;
@@ -213,6 +213,7 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 	constexpr static std::uint32_t const ZCHK = 0x5A43484B;
 	constexpr static std::uint32_t const DBOD = 0x44424F44;
 	constexpr static std::uint32_t const czmp = 0x637A6D70;
+	constexpr static std::uint32_t const LEXT = 0x4C455854;
 
 	std::vector<std::span<std::uint8_t const>> spans{};
 
@@ -249,10 +250,14 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 			stage += 1;
 			continue;
 		}
+		if ((stage == 3 && ((read_4(it + 1) == ZCHK) || (read_4(it) == ZCHK))) || (stage == 3 && ((read_4(it + 1) == LEXT) || (read_4(it) == LEXT)))) {
+			//std::cout << "ZCHK OR LEXT ENCOUNTERED\n";
+			break;
+		}
 		// seek ZCHK
 		// at the end of ZLIB every block there's an (optional) 00 byte followed by ZCHK.
 		// so it + 1 should skip 00 and read out ZCHK (or not)
-		if (stage == 3 && ((read_4(it+1) != ZCHK) && (read_4(it) != ZCHK)) ) {
+		if (stage == 3 && (read_4(it + 1) != ZCHK) && (read_4(it) != ZCHK) && (read_4(it + 1) != LEXT) && (read_4(it) != LEXT)) {
 			// if conditions are met parse 12 byte sub header.
 			it += 8;
 			length = read_4(it);
@@ -263,9 +268,9 @@ std::vector<std::span<std::uint8_t const>> seek_ZCHK_DBOD(mio::ummap_source& mma
 			it += length;
 			continue;
 		}
-		else if (stage == 3 && ((read_4(it + 1) == ZCHK) || (read_4(it) == ZCHK))) {
-			break;
-		}
+		//else if (stage == 3 && ((read_4(it + 1) == ZCHK) || (read_4(it) == ZCHK))) {
+		//	break;
+		//}
 		
 	}
 	return spans;

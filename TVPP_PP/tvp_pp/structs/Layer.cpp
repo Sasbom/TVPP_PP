@@ -17,11 +17,14 @@
 #endif
 
 
-Layer::Layer(std::span<std::uint8_t const>& layer_info) {
+Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_idx = 0, std::size_t const& layer_idx = 0 ) {
 	auto read_4 = [](auto it) {
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
 	};
 	
+    this->clip_idx = clip_idx;
+    this->layer_idx = layer_idx;
+
 	auto it = layer_info.begin();
 
 	auto LNAM_len = read_4(it + 4);
@@ -127,6 +130,7 @@ invisible, lighttable, stencil, locked, position_locked, preserve_trans
 }
 
 void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileInfo& fileinfo) {
+    
     auto read_4 = [](std::uint8_t const* it) {
         return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
     };
@@ -153,7 +157,8 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 LOG("DBOD!");
                 // deal with DBOD
                 auto dbod_source = seek_ZCHK_DBOD(mmap, offset);
-                frames.push_back(std::make_unique<buffer_var>(Buffer_DBOD(fileinfo, dbod_source)));
+                frames_unique_idx.push_back(frames.size());
+                frames.push_back(std::make_unique<buffer_var>(Buffer_DBOD(fileinfo, dbod_source,shared_from_this())));
                 last = &std::get<0>(*frames[frames.size()-1].get());
                 //std::cout << "offset: " << offset << "\n";
                 it = mmap.begin() + offset;
@@ -177,7 +182,8 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 else {
                     LOG("SRAW OG!");
                     auto sraw_source = seek_ZCHK_SRAW_VEC(mmap, offset);
-                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source)));
+                    frames_unique_idx.push_back(frames.size());
+                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source, shared_from_this())));
                     last = &std::get<1>(*frames[frames.size() - 1].get());
                     it = mmap.begin() + offset;
                     continue;
@@ -227,9 +233,9 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
             fr = lyr.get_framebuffer();
         }
         //std::cout << "writing it. " << fr.size() << "\n";
-        auto f = std::ofstream(fullpathbin.c_str(), std::ios::binary);
-        f.write(reinterpret_cast<char*>(fr.data()), fr.size());
-        f.close();
+        //auto f = std::ofstream(fullpathbin.c_str(), std::ios::binary);
+        //f.write(reinterpret_cast<char*>(fr.data()), fr.size());
+        //f.close();
 
         stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
         framenr += 1;

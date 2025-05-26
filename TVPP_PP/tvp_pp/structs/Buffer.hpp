@@ -5,7 +5,10 @@
 #include <optional>
 #include <variant>
 #include <span>
+#include <memory>
 #include "FileInfo.hpp"
+
+struct Layer;
 
 using loc_t = std::tuple<std::size_t, std::size_t>;
 using framebuf_raw_t = std::vector<uint8_t>;
@@ -39,8 +42,8 @@ struct SRAW_block_s {
 using sraw_buffer_el_t = std::variant<framebuf_raw_t, SRAW_block_s>;
 using sraw_buffer_t = std::vector<sraw_buffer_el_t>;
 
-struct Buffer {
 
+struct Buffer {
 	std::size_t width{};
 	std::size_t height{};
 	std::size_t stride{ 4 }; // RGBA 8bit
@@ -53,27 +56,33 @@ struct Buffer {
 
 	bool has_buffer();
 
+	framebuf_raw_t sample_block(std::size_t index, std::size_t block_size);
+
 	// override to define unroll behavior
 	virtual void unroll_source_to_cache() = 0;
 	virtual framebuf_raw_t get_framebuffer() = 0;
 };
 
 struct Buffer_SRAW : public Buffer {
-	Buffer_SRAW(FileInfo& info, source_t const & source);
+	Buffer_SRAW(FileInfo& info, source_t const& source, std::shared_ptr<Layer> layer);
 
 	constexpr static std::size_t SRAW_hdr_size = 24;
 	std::size_t block_size{};
 
 	sraw_buffer_t interim_buffer{};
 
+	std::weak_ptr<Layer> layer;
+
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;
 };
 
 struct Buffer_DBOD : public Buffer {
-	Buffer_DBOD(FileInfo& info, source_t const & source);
+	Buffer_DBOD(FileInfo& info, source_t const & source, std::shared_ptr<Layer> layer);
 
 	constexpr static std::size_t DBOD_hdr_size = 8;
+
+	std::weak_ptr<Layer> layer;
 
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;
@@ -92,16 +101,3 @@ struct Buffer_SRAW_Repeat: public Buffer{
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;
 };
-
-// Parses a layer, indexing where frames are stored in mapped memory offsets.
-// The first "Frame" is always of DBOD type.
-// TODO: The presence or absence of ZCHK should eventually be taken into account.
-//       We are assuming "TVPaint" (aka, zlib 78 01) compression is on right now.
-//struct Layer {
-//	loc_t location{};
-//
-//	std::size_t duration{};
-//	std::size_t start{};
-//
-//	cache_t cached_buffer{};
-//};

@@ -21,8 +21,6 @@ set(SOURCES
     "tvp_pp/structs/FileInfo.cpp"
     "tvp_pp/structs/ThumbInfo.hpp"
     "tvp_pp/structs/ThumbInfo.cpp" 
-    "tvp_pp/structs/File.hpp"
-    "tvp_pp/structs/File.cpp"
     "tvp_pp/structs/Buffer.hpp" 
     "tvp_pp/structs/Buffer.cpp"
     "tvp_pp/structs/Shot.hpp"
@@ -31,6 +29,8 @@ set(SOURCES
     "tvp_pp/structs/Clip.cpp"
     "tvp_pp/structs/Layer.hpp"
     "tvp_pp/structs/Layer.cpp"
+    "tvp_pp/structs/File.hpp"
+    "tvp_pp/structs/File.cpp"
     "stb/stb_image_write.h"
     "stb/stb_image_write.cpp"
 ) 

@@ -1,6 +1,7 @@
 #include "File.hpp"
 #include <filesystem>
 #include <iostream>
+
 File::File(mio::ummap_source& mmap) {
 	offset = 0;
 	
@@ -37,7 +38,7 @@ void File::clip_cycle(mio::ummap_source& mmap) {
 		
 		while (next == LEXT_AFTER::LAYER) {
 			auto layer_hdr = seek_layer_header(mmap, offset);
-			clips.back()->layers.push_back(std::make_unique<Layer>(layer_hdr));
+			clips.back()->layers.push_back(std::make_shared<Layer>(layer_hdr, clips.size()-1,clips.back()->layers.size()-1));
 			clips.back()->layers.back()->read_into_layer(mmap, offset, file_info);
 
 			next = seek_LEXT_UDAT_STCK_FCFG(mmap, offset);
