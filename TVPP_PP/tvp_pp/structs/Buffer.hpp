@@ -64,7 +64,7 @@ struct Buffer {
 };
 
 struct Buffer_SRAW : public Buffer {
-	Buffer_SRAW(FileInfo& info, source_t const& source, std::shared_ptr<Layer> layer);
+	Buffer_SRAW(FileInfo& info, source_t const& source, std::shared_ptr<Layer> layer, std::size_t const & frame_nr_unique);
 
 	constexpr static std::size_t SRAW_hdr_size = 24;
 	std::size_t block_size{};
@@ -72,6 +72,7 @@ struct Buffer_SRAW : public Buffer {
 	sraw_buffer_t interim_buffer{};
 
 	std::weak_ptr<Layer> layer;
+	std::size_t frame_nr_unique{};
 
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;

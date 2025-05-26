@@ -51,11 +51,12 @@ framebuf_raw_t Buffer::sample_block(std::size_t index, std::size_t block_size) {
 	return to_buffer;
 }
 
-Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source, std::shared_ptr<Layer> layer) : layer(layer) {
+Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source, std::shared_ptr<Layer> layer, std::size_t const& frame_nr_unique = 0) : layer(layer) {
 	width = info.width;
 	height = info.height;
 	buffer_type = buffer_t::SRAW_FRAME;
 	this->source = source;
+	this->frame_nr_unique = frame_nr_unique;
 }
 
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source) {
@@ -185,7 +186,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	std::size_t idx{ 0 };
 	for (auto& el : this->interim_buffer) {
 		if (el.index() == 0) {
-			//std::cout << "RLE! " << c << "\n";
+			//std::cout << "RLE! " << idx << "\n";
 			//last_buf = &buf;
 			//std::cout << std::format("buffer RLE\n{}\n", buf);
 
@@ -201,64 +202,40 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 			}
 			else if (action.block_t == SRAW_block_t::REPEAT) {
 				//if (last_buf != nullptr) {
-				//	std::cout << "REPEAT! " << idx << "\n";
+				//std::cout << "REPEAT! " << idx << "\n";
 				//	idx++;
 				//	auto& buf = *last_buf;
 				//	unpack_block_into_frame(c, buf); // do nothing to test
 				//}
 				if (action.element_nr < this->interim_buffer.size()) {
+					// IT SEEMS THAT THE SOURCE FRAME IS AN OFFSET.
 					if (action.source_frame == 0) {
 						auto ref_el = this->interim_buffer[action.element_nr];
 						if (ref_el.index() == 0) {
-							//std::cout << "REPEAT! " << c << "\n";
 							unpack_block_into_frame(idx, std::get<0>(ref_el));
+						}
+						else {
+							std::cout << "TIME TRAVEL FAILED!\n";
 						}
 					}
 					else if(auto ulayer = this->layer.lock()){
-						auto real_frame = ulayer->frames_unique_idx.at(action.source_frame);
+						auto real_frame = ulayer->frames_unique_idx.at(this->frame_nr_unique - action.source_frame);
 						auto& source = ulayer->frames.at(real_frame);
 						if (source.get()->index() == 0) {
 							auto& dbod = std::get<0>(*source.get());
 							auto buf = dbod.sample_block(action.element_nr, block_size);
 							unpack_block_into_frame(idx, buf);
+							this->interim_buffer[idx] = buf;
 						}
 						else if (source.get()->index() == 1) {
+							//std::cout << "TIME TRAVEL! " << idx << " FROM: " << action.source_frame << " @: " << action.element_nr << "\n";
 							auto& sraw = std::get<1>(*source.get());
 							auto buf = sraw.sample_block(action.element_nr, block_size);
 							unpack_block_into_frame(idx, buf);
+							this->interim_buffer[idx] = buf;
 						}
 					}
 				}
-
-
-				//if (action.element_nr < this->interim_buffer.size()) {
-				//	if (auto ulayer = this->layer.lock()) {
-				//		auto real_frame = ulayer->frames_unique_idx.at(action.source_frame);
-				//		auto& source = ulayer->frames.at(real_frame);
-				//		if (source.get()->index() == 0) {
-				//			auto& dbod = std::get<0>(*source.get());
-				//			auto buf = dbod.sample_block(action.element_nr, block_size);
-				//			unpack_block_into_frame(idx, buf);
-				//		}
-				//		else if (source.get()->index() == 1) {
-				//			auto& sraw = std::get<1>(*source.get());
-				//			auto buf = sraw.sample_block(action.element_nr, block_size);
-				//			unpack_block_into_frame(idx, buf);
-				//		}
-				//	}
-					
-					// fetch "asked for" RLE buffer.
-					//auto ref_el = this->interim_buffer[action.element_nr];
-					//if (ref_el.index() == 0) {
-					//	//std::cout << "REPEAT! " << c << "\n";
-					//	unpack_block_into_frame(idx, std::get<0>(ref_el));
-					//}
-					//else {
-					//	// BIG TODO!
-					//	// reading one byte isn't good enough, we need awareness off the layers before.
-					//	// how this exactly works, I have no idea, but I do know how to figure it out.
-					//	//std::cout << "reference missed!\n" << action.element_nr << " @ " << action.source_frame << "\n";
-					//}
 			}
 			else if (action.block_t == SRAW_block_t::FAILEDPARSE) {
 				//std::cout << "FAILED PARSE!" << "\n";

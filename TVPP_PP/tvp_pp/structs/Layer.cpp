@@ -183,7 +183,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                     LOG("SRAW OG!");
                     auto sraw_source = seek_ZCHK_SRAW_VEC(mmap, offset);
                     frames_unique_idx.push_back(frames.size());
-                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source, shared_from_this())));
+                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source, shared_from_this(),frames_unique_idx.size()-1)));
                     last = &std::get<1>(*frames[frames.size() - 1].get());
                     it = mmap.begin() + offset;
                     continue;
@@ -203,7 +203,7 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
     auto fpath = fs::path(folder_name);
     fs::create_directory(fpath);
 
-    std::size_t framenr = frame_offset + first_frame_num;
+    std::size_t framenr = frame_offset;
 
     auto pad = [](std::size_t const& num, std::size_t len = 4) {
         auto str = std::to_string(num);
@@ -237,7 +237,7 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
         //f.write(reinterpret_cast<char*>(fr.data()), fr.size());
         //f.close();
 
-        stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
+        //stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
         framenr += 1;
     }
 
