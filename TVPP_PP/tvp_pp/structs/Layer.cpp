@@ -57,8 +57,8 @@ Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_
     this->group_id = *(LRHD_end + 58-1);
 }
 
-// watch out with this, end of line ? into utf-8 bytes not handled properly. 
 // I'm wondering if I can't just grab the LNAW and LNAM both.
+// EDIT: I can.
 void Layer::name_from_LNAM_LNAW(std::span<std::uint8_t const> const& lnam, std::span<std::uint8_t const> const& lnaw) {
     /*std::string collect{};
     std::size_t posm = 0;
@@ -150,7 +150,6 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
         if (hdr == ZCHK) {
             //std::cout << "ZCHK!\n";
             auto sig = read_4(it + 8);
-            //std::cout << "signal" << sig << "\n";
             if (sig == DBOD) {
                 LOG("DBOD!");
                 // deal with DBOD
@@ -158,18 +157,15 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 frames_unique_idx.push_back(frames.size());
                 frames.push_back(std::make_unique<buffer_var>(Buffer_DBOD(fileinfo, dbod_source,shared_from_this())));
                 last = &std::get<0>(*frames[frames.size()-1].get());
-                //std::cout << "offset: " << offset << "\n";
                 it = mmap.begin() + offset;
                 continue;
             }
             if (sig == SRAW) {
-                //std::cout << "SRAW! Checking if repeat.\n";
-                // first, check for repeat
+                // first, check for repeat magic bytes
                 auto _c0 = *(it + 15);
                 auto _2f = *(it + 23);
                 auto _01 = *(it + 27);
                 auto _64 = *(it + 31);
-                //std::cout << int(_c0) << " " << int(_2f) << " " << int(_01) << " " << int(_64) << "\n";
                 if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
                     LOG("SRAW REPEAT!\n");
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
@@ -188,9 +184,46 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 }
             }
         }
-        //std::cout << "skipping 1\n";
         offset++;
         it++;
+    }
+}
+
+void Layer::cache_layer_contents() {
+    for (auto& frame : frames) {
+        auto ptr = frame.get();
+
+        if (ptr->index() == 0) {
+            auto& lyr = std::get<0>(*ptr);
+            lyr.get_framebuffer();
+        }
+        else if (ptr->index() == 1) {
+            auto& lyr = std::get<1>(*ptr);
+            lyr.get_framebuffer();
+        }
+        else if (ptr->index() == 2) {
+            auto& lyr = std::get<2>(*ptr);
+            lyr.get_framebuffer();
+        }
+    }
+}
+
+void Layer::clear_layer_contents() {
+    for (auto& frame : frames) {
+        auto ptr = frame.get();
+
+        if (ptr->index() == 0) {
+            auto& lyr = std::get<0>(*ptr);
+            lyr.clear_cache();
+        }
+        else if (ptr->index() == 1) {
+            auto& lyr = std::get<1>(*ptr);
+            lyr.clear_cache();
+        }
+        else if (ptr->index() == 2) {
+            auto& lyr = std::get<2>(*ptr);
+            lyr.clear_cache();
+        }
     }
 }
 
@@ -238,6 +271,5 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
         stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
         framenr += 1;
     }
-
 
 }

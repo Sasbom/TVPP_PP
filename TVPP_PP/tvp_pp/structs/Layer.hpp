@@ -48,6 +48,8 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	void print_info();
 
 	void read_into_layer(mio::ummap_source& mmap ,std::size_t& offset, FileInfo& file_info);
+	void cache_layer_contents();
+	void clear_layer_contents();
 	void dump_frames(std::string const& prefix, std::string const& folder_name, FileInfo& file_info);
 private:
 	void name_from_LNAM_LNAW(std::span<std::uint8_t const> const& LNAM, std::span<std::uint8_t const> const& LNAW);

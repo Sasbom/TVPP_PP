@@ -54,6 +54,7 @@ struct Buffer {
 
 	cache_t cache;
 
+	void clear_cache();
 	bool has_buffer();
 
 	framebuf_raw_t sample_block(std::size_t index, std::size_t block_size);
@@ -70,6 +71,7 @@ struct Buffer_SRAW : public Buffer {
 	std::size_t block_size{};
 
 	sraw_buffer_t interim_buffer{};
+	void clear_interim_buffer();
 
 	std::weak_ptr<Layer> layer;
 	std::size_t frame_nr_unique{};

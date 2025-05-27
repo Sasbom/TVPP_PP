@@ -16,6 +16,11 @@ SRAW_block_s::SRAW_block_s(SRAW_block_t const& SRAW_type, std::size_t const& ele
 	this->source_frame = source_frame;
 }
 
+void Buffer::clear_cache() {
+	// setting the optional to nullopt will free up resources
+	this->cache = std::nullopt;
+};
+
 bool Buffer::has_buffer() {
 	return cache.has_value();
 }
@@ -57,6 +62,12 @@ Buffer_SRAW::Buffer_SRAW(FileInfo& info, source_t const & source, std::shared_pt
 	buffer_type = buffer_t::SRAW_FRAME;
 	this->source = source;
 	this->frame_nr_unique = frame_nr_unique;
+}
+
+void Buffer_SRAW::clear_interim_buffer() {
+	// Clear interim cache.
+	this->interim_buffer.clear();
+	this->interim_buffer.shrink_to_fit();
 }
 
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source) {
@@ -186,29 +197,18 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	std::size_t idx{ 0 };
 	for (auto& el : this->interim_buffer) {
 		if (el.index() == 0) {
-			//std::cout << "RLE! " << idx << "\n";
-			//last_buf = &buf;
-			//std::cout << std::format("buffer RLE\n{}\n", buf);
-
 			unpack_block_into_frame(idx, std::get<0>(el));
 			idx++;
 		}
 		else if (el.index() == 1) {
 			auto action = std::get<1>(el);
 			if (action.block_t == SRAW_block_t::ZERO) {
-				// LEGACY: NO SUCH THING AS ZERO.
+				// UNREACHABLE LEGACY: NO SUCH THING AS ZERO.
 				std::cout << "ZERO! " << idx << "\n";
 				// do nothing because preallocated with 0 memory.
 			}
 			else if (action.block_t == SRAW_block_t::REPEAT) {
-				//if (last_buf != nullptr) {
-				//std::cout << "REPEAT! " << idx << "\n";
-				//	idx++;
-				//	auto& buf = *last_buf;
-				//	unpack_block_into_frame(c, buf); // do nothing to test
-				//}
 				if (action.element_nr < this->interim_buffer.size()) {
-					// IT SEEMS THAT THE SOURCE FRAME IS AN OFFSET.
 					if (action.source_frame == 0) {
 						auto ref_el = this->interim_buffer[action.element_nr];
 						if (ref_el.index() == 0) {
@@ -219,6 +219,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 						}
 					}
 					else if(auto ulayer = this->layer.lock()){
+						// IT SEEMS THAT THE SOURCE FRAME IS AN OFFSET LOOKING BACK.
 						auto real_frame = ulayer->frames_unique_idx.at(this->frame_nr_unique - action.source_frame);
 						auto& source = ulayer->frames.at(real_frame);
 						if (source.get()->index() == 0) {
@@ -228,7 +229,6 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 							this->interim_buffer[idx] = buf;
 						}
 						else if (source.get()->index() == 1) {
-							//std::cout << "TIME TRAVEL! " << idx << " FROM: " << action.source_frame << " @: " << action.element_nr << "\n";
 							auto& sraw = std::get<1>(*source.get());
 							auto buf = sraw.sample_block(action.element_nr, block_size);
 							unpack_block_into_frame(idx, buf);
@@ -238,7 +238,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 				}
 			}
 			else if (action.block_t == SRAW_block_t::FAILEDPARSE) {
-				//std::cout << "FAILED PARSE!" << "\n";
+				std::cout << "FAILED PARSE!" << "\n";
 				cache = std::nullopt;
 				return;
 			}
@@ -249,8 +249,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	}
 
 	// Clear interim cache.
-	this->interim_buffer.clear();
-	this->interim_buffer.shrink_to_fit();
+	this->clear_interim_buffer();
 
 	cache = unpack_all;
 }
