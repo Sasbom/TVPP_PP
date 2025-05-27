@@ -52,8 +52,8 @@ Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_
     std::uint8_t layer_flags = *(LRHD_end + 32-1);
     this->unpack_layerflags(layer_flags);
 
-    this->repeat_out_type = *(LRHD_end + 46-1);
-    this->repeat_in_type = *(LRHD_end + 54-1);
+    this->repeat_out_type = static_cast<repeat_t>(*(LRHD_end + 46-1));
+    this->repeat_in_type = static_cast<repeat_t>(*(LRHD_end + 54-1));
     this->group_id = *(LRHD_end + 58-1);
 }
 
@@ -102,6 +102,20 @@ void Layer::unpack_layerflags(std::uint8_t const& layer_flags) {
     this->preserve_trans = ((layer_flags & TRANS) != 0);
 };
 
+std::string Layer::repeat_t_to_str(repeat_t const& rep) {
+    switch (rep) {
+    case repeat_t::NONE:
+        return "NONE";
+    case repeat_t::REPEAT:
+        return "REPEAT";
+    case repeat_t::PINGPONG:
+        return "PINGPONG";
+    case repeat_t::HOLD:
+        return "HOLD";
+    }
+    return "NONE";
+}
+
 void Layer::print_info() {
     auto s = std::format(R"(Layer:
 Name: {}
@@ -120,7 +134,7 @@ Position Locked: {}
 Preserve Transparency: {}
 )",
 name, frame_offset, 
-repeat_in_type, repeat_out_type, 
+repeat_t_to_str(repeat_in_type), repeat_t_to_str(repeat_out_type),
 group_id, opacity,
 invisible, lighttable, stencil, locked, position_locked, preserve_trans
 );

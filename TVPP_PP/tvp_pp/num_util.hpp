@@ -53,4 +53,3 @@ inline T swap_endianness_uintx(T num) {
     swap_endianness_uintx_inplace(num);
     return num;
 }
-

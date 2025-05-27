@@ -16,6 +16,8 @@ struct File {
 	Shot shot_info{};
 	std::vector<std::unique_ptr<Clip>> clips{};
 
+	void print_layers();
+
 	void dump_file();
 
 private:

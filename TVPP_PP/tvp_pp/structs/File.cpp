@@ -29,7 +29,6 @@ void File::clip_cycle(mio::ummap_source& mmap) {
 		auto clip_hdr = seek_header(mmap, offset, 1, 2048);
 		auto clip_hdr_read = file_read_header(clip_hdr);
 		clips.push_back(std::make_unique<Clip>(clip_hdr_read));
-		clips.back()->print_info();
 		// Skip FORM TVPP XS24
 		//std::cout << offset << "\n";
 		seek_3bytimbuffer_XS24(mmap, offset);
@@ -43,6 +42,19 @@ void File::clip_cycle(mio::ummap_source& mmap) {
 
 			next = seek_LEXT_UDAT_STCK_FCFG(mmap, offset);
 			//std::cout << int(next) << "\n";
+		}
+	}
+}
+
+void File::print_layers() {
+	for (auto& c : clips) {
+		c->print_info();
+		std::cout << "\n";
+
+		for (auto& l : c->layers) {
+			std::cout << l->name << "\n";
+			l->print_info();
+			std::cout << "\n";
 		}
 	}
 }
