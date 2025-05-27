@@ -92,6 +92,10 @@ struct Buffer_DBOD : public Buffer {
 };
 
 // always repeats 
+// NOTE: DO RESEARCH INTO WHAT "REPEAT IMAGES" DOES WHEN PARSING.
+// Officially these frames are referred to as "Exposure cells",
+// the repeat images function could reference another SRAW/DBOD layer but I have yet to figure out where. 
+// https://doc.tvpaint.com/docs/animation-advanced-functions/repeat-images-function
 struct Buffer_SRAW_Repeat: public Buffer{
 	// implements the buffer interface
 	using buffer_source = std::variant<Buffer_DBOD*, Buffer_SRAW*>;
