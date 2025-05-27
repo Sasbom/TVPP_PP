@@ -39,7 +39,7 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	// Replace these repeat in/out w/ enum class type
 	repeat_t repeat_in_type{};
 	repeat_t repeat_out_type{};
-	
+
 	std::size_t group_id{};
 
 	std::uint8_t opacity_byte{};
@@ -57,10 +57,17 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	void read_into_layer(mio::ummap_source& mmap ,std::size_t& offset, FileInfo& file_info);
 	void cache_layer_contents();
 	void clear_layer_contents();
+
+	cache_t& get_cache_at_frame(std::size_t const& frame);
+
 	void dump_frames(std::string const& prefix, std::string const& folder_name, FileInfo& file_info);
 private:
 	void name_from_LNAM_LNAW(std::span<std::uint8_t const> const& LNAM, std::span<std::uint8_t const> const& LNAW);
 	void unpack_layerflags(std::uint8_t const& layer_flags);
+	
+	cache_t& in_range_cache(std::size_t const& frame);
 
 	std::string repeat_t_to_str(repeat_t const& rep);
+
+	static cache_t EMPTY_CACHE; // must remain empty.
 };

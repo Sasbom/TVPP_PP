@@ -287,3 +287,67 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
     }
 
 }
+
+cache_t& Layer::in_range_cache(std::size_t const& frame) {
+    auto ptr = frames.at(frame).get();
+
+    if (ptr->index() == 0) {
+        return std::get<0>(*ptr).cache;
+    }
+    else if (ptr->index() == 1) {
+        return std::get<1>(*ptr).cache;
+    }
+    else if (ptr->index() == 2) {
+        return std::get<2>(*ptr).get_ref_cache();
+    }
+    return this->EMPTY_CACHE;
+}
+
+
+// fetch cache at frame taking pre and post behavior into account
+cache_t& Layer::get_cache_at_frame(std::size_t const& frame) {
+    auto frames_amt = this->frames.size();
+    
+    if (frame < frame_offset) {
+    // PRE-BEHAVIOR.
+        switch (this->repeat_out_type) {
+        case repeat_t::NONE: {
+            return this->EMPTY_CACHE;
+        }
+        case repeat_t::REPEAT: {
+            return this->EMPTY_CACHE;
+        }
+        case repeat_t::PINGPONG: {
+            return this->EMPTY_CACHE;
+        }
+        case repeat_t::HOLD: {
+            return this->EMPTY_CACHE;
+        }
+        }
+
+    }
+    else if (frame >= frame_offset + frames_amt) {
+        // POST-BEHAVIOR.
+        switch (this->repeat_out_type) {
+        case repeat_t::NONE: {
+            return this->EMPTY_CACHE;
+        }
+        case repeat_t::REPEAT: {
+            return this->EMPTY_CACHE;
+        }
+        case repeat_t::PINGPONG: {
+            return this->EMPTY_CACHE;
+        }
+        case repeat_t::HOLD: {
+            return this->EMPTY_CACHE;
+        }
+        }
+    }
+    else {
+        // ACTUAL IN-RANGE BEHAVIOR
+        std::size_t cur_frame_idx = frame - frame_offset;
+        return in_range_cache(cur_frame_idx);
+    }
+    
+    return this->EMPTY_CACHE;
+}

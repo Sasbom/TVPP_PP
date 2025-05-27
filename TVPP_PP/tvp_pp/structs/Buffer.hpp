@@ -107,4 +107,7 @@ struct Buffer_SRAW_Repeat: public Buffer{
 
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;
+
+	// reference cache grab
+	cache_t& get_ref_cache();
 };

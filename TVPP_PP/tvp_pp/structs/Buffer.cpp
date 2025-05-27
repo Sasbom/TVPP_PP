@@ -70,18 +70,30 @@ void Buffer_SRAW::clear_interim_buffer() {
 	this->interim_buffer.shrink_to_fit();
 }
 
-Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source) {
-	sraw_source = &source;
-
-};
-
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(buffer_source source) {
 	sraw_source = source;
+};
+
+Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source) {
+	sraw_source = &source;
 };
 
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_DBOD& source) {
 	sraw_source = &source;
 };
+
+cache_t& Buffer_SRAW_Repeat::get_ref_cache() {
+	switch (sraw_source.index()) {
+	case 0: {
+		return std::get<0>(sraw_source)->cache;
+	}
+	case 1: {
+		return std::get<0>(sraw_source)->cache;
+	}
+	}
+	
+	return cache; //won't hold anything.
+}
 
 Buffer_DBOD::Buffer_DBOD(FileInfo& info, source_t const& source, std::shared_ptr<Layer> layer): layer(layer) {
 	width = info.width;
