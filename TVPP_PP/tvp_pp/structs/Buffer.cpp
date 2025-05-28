@@ -88,7 +88,7 @@ cache_t& Buffer_SRAW_Repeat::get_ref_cache() {
 		return std::get<0>(sraw_source)->cache;
 	}
 	case 1: {
-		return std::get<0>(sraw_source)->cache;
+		return std::get<1>(sraw_source)->cache;
 	}
 	}
 	
