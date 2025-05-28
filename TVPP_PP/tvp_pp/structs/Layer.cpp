@@ -9,7 +9,7 @@
 #include "../../stb/stb_image_write.h"
 #include <fstream>
 
-#ifdef VERBOSE
+#ifdef LAYER_VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
 #else
 #define LOG(message)
@@ -239,6 +239,11 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
 
     Buffer_SRAW_Repeat::buffer_source last{};
 
+    bool repeat_images{ false };
+    SRAW_repeatimages_t mode = SRAW_repeatimages_t::LOOP; // default
+    std::size_t repeat_images_length{ 0 };
+    std::size_t repeat_images_start_index{ 0 };
+
     while (true) {
         auto hdr = read_4(it);
 
@@ -256,6 +261,9 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 frames.push_back(std::make_unique<buffer_var>(Buffer_DBOD(fileinfo, dbod_source,shared_from_this())));
                 last = &std::get<0>(*frames[frames.size()-1].get());
                 it = mmap.begin() + offset;
+                // turn off repeat images mode.
+                repeat_images = false;
+                mode = SRAW_repeatimages_t::LOOP; // default
                 continue;
             }
             if (sig == SRAW) {
@@ -267,15 +275,31 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
                     LOG("SRAW REPEAT!\n");
                     auto rep_sraw_source = seek_ZCHK_SRAW(mmap, offset);
+                    it = mmap.begin() + offset;
                     auto rep_sraw_span = std::span(rep_sraw_source.begin(), rep_sraw_source.end());
                     auto sraw_info = decompress_span_zlib(rep_sraw_span);
                     // read out "Repeat Images" section
-                    std::size_t repeat_mode = read_4_b(sraw_info.begin() + 12);
+
+                    // Conditions for engaging a different readout mode are that the repeat length must be greater than 1.
+                    // either 0 or 1 doesn't get acknowledged as a proper "repeat images" start.
+                    auto repeat_mode = static_cast<SRAW_repeatimages_t>(read_4_b(sraw_info.begin() + 12));
                     std::size_t repeat_length = read_4_b(sraw_info.begin() + 16);
-                    LOG("Repeat byte: " << repeat_mode << " Repeat length: " << repeat_length)
+                    
+                    if (!repeat_images && repeat_length > 1) {
+                        // switch to processing new repeat images section
+                        repeat_images = true;
+                        mode = repeat_mode;
+                        repeat_images_start_index = frames.size(); // doesn't have to be subtracted because we're pushing back later
+                    }
+                    else if (repeat_images && repeat_length > 1) {
+                        // new image repeat section in same span of exposures/sraw_repeat frames
+                        mode = repeat_mode;
+                        repeat_images_start_index = frames.size();
+                    }
+
+                    LOG("Repeat byte: " << static_cast<int>(repeat_mode) << " Repeat length: " << repeat_length)
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
                     //offset += 64; (is already moved by seek_ZCHK_SRAW)
-                    it = mmap.begin() + offset;
                     continue;
                 }
                 else {
@@ -285,6 +309,9 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW(fileinfo, sraw_source, shared_from_this(),frames_unique_idx.size()-1)));
                     last = &std::get<1>(*frames[frames.size() - 1].get());
                     it = mmap.begin() + offset;
+                    // turn off repeat images mode.
+                    repeat_images = false;
+                    mode = SRAW_repeatimages_t::LOOP; // default
                     continue;
                 }
             }
