@@ -103,7 +103,7 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	void cache_layer_contents();
 	void clear_layer_contents();
 
-	cache_t& get_cache_at_frame(std::size_t const& frame);
+	cache_t& get_cache_at_frame(int long const& frame);
 
 	void dump_frames(std::string const& prefix, std::string const& folder_name, FileInfo& file_info);
 private:

@@ -327,10 +327,13 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
     auto fpath = fs::path(folder_name);
     fs::create_directory(fpath);
 
-    std::size_t framenr = frame_offset;
+    auto framenr = frame_offset;
 
-    auto pad = [](std::size_t const& num, std::size_t len = 4) {
-        auto str = std::to_string(num);
+    auto pad = [](int long const& num, std::size_t len = 4) {
+        auto str = std::to_string(std::abs(num));
+        if (num < 0) {
+            str.insert(str.begin(), '-');
+        }
         while (str.length() != len) {
             str.insert(str.begin(), '0');
         }
@@ -384,7 +387,7 @@ cache_t& Layer::in_range_cache(std::size_t const& frame) {
 
 
 // fetch cache at frame taking pre and post behavior into account
-cache_t& Layer::get_cache_at_frame(std::size_t const& frame) {
+cache_t& Layer::get_cache_at_frame(int long const& frame) {
     auto frames_amt = this->frames.size();
     
     if (frame < frame_offset) {
@@ -394,13 +397,34 @@ cache_t& Layer::get_cache_at_frame(std::size_t const& frame) {
             return this->EMPTY_CACHE;
         }
         case repeat_t::REPEAT: {
-            return this->EMPTY_CACHE;
+            int long cur_frame_idx = frame - frame_offset;
+            return in_range_cache(cur_frame_idx % frames.size());
         }
         case repeat_t::PINGPONG: {
-            return this->EMPTY_CACHE;
+            int long cur_frame_idx = frame - frame_offset;
+            
+            // early return optimization
+            if (frames.size() == 1) {
+                return in_range_cache(0);
+            }
+            else if (frames.size() == 2) {
+                return in_range_cache(cur_frame_idx % frames.size());
+            }
+            // size 3 cycle 4    || size 4 cycle 6       || size 5 cycle 8
+            // 1 2 3 [ 2 ] 1 2.. || 1 2 3 4 [3 2] 1 2 .. || 1 2 3 4 5 [4 3 2] 1 2..
+            long int cycle_size = frames.size() * 2 - 2;
+            auto cycle_index = cur_frame_idx % cycle_size;
+            std::size_t real_idx;
+            if (cycle_index >= frames.size()) {
+                real_idx = (-cycle_index) % cycle_size;
+            }
+            else {
+                real_idx = cycle_index;
+            }
+            return in_range_cache(real_idx);
         }
         case repeat_t::HOLD: {
-            return this->EMPTY_CACHE;
+            return in_range_cache(0); // first frame
         }
         }
 
@@ -412,13 +436,33 @@ cache_t& Layer::get_cache_at_frame(std::size_t const& frame) {
             return this->EMPTY_CACHE;
         }
         case repeat_t::REPEAT: {
-            return this->EMPTY_CACHE;
+            int long cur_frame_idx = frame - frame_offset;
+            return in_range_cache(cur_frame_idx % frames.size());
         }
         case repeat_t::PINGPONG: {
-            return this->EMPTY_CACHE;
+            int long cur_frame_idx = frame - frame_offset;
+
+            // early return optimization
+            if (frames.size() == 1) {
+                return in_range_cache(frames.size()-1);
+            } else if (frames.size() == 2) {
+                return in_range_cache(cur_frame_idx % frames.size());
+            }
+            // size 3 cycle 4    || size 4 cycle 6       || size 5 cycle 8
+            // 1 2 3 [ 2 ] 1 2.. || 1 2 3 4 [3 2] 1 2 .. || 1 2 3 4 5 [4 3 2] 1 2..
+            long int cycle_size = frames.size() * 2 - 2;  
+            auto cycle_index = cur_frame_idx % cycle_size;
+            std::size_t real_idx;
+            if (cycle_index >= frames.size()) {
+                real_idx = (-cycle_index) % cycle_size;
+            }
+            else {
+                real_idx = cycle_index;
+            }
+            return in_range_cache(real_idx);
         }
         case repeat_t::HOLD: {
-            return this->EMPTY_CACHE;
+            return in_range_cache(frames.size()-1); // last frame
         }
         }
     }
