@@ -44,10 +44,13 @@ Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_
     auto LRHD_end = it;
 
     this->first_frame_num = read_4(it);
-    this->frame_offset = read_4(it+4);
+    this->frame_offset = static_cast<std::int32_t>(read_4(it+4)); // is signed.
+    this->frames_amount = read_4(it + 8);
 
     this->opacity_byte = *(LRHD_end + 20-1);
     this->opacity = std::round((static_cast<double>(this->opacity_byte)/255.0)*100);
+
+    this->blend_mode = static_cast<blendmode_t>(read_4(it + 60));
 
     std::uint8_t layer_flags = *(LRHD_end + 32-1);
     this->unpack_layerflags(layer_flags);
@@ -116,14 +119,90 @@ std::string Layer::repeat_t_to_str(repeat_t const& rep) {
     return "NONE";
 }
 
+#ifdef DIFFERENCE // on msvc, difference is a macro in winuser.
+#define RESTORE_DIFFERENCE
+#undef DIFFERENCE
+#endif
+
+std::string Layer::blendmode_t_to_str(blendmode_t const& blend) {
+    switch (blend) {
+    case blendmode_t::COLOR:
+        return "Color";
+    case blendmode_t::BEHIND:
+        return "Behind";
+    case blendmode_t::ERASE:
+        return "Erase";
+    case blendmode_t::SHADE:
+        return "Shade";
+    case blendmode_t::LIGHT:
+        return "Light";
+    case blendmode_t::COLORIZE:
+        return "Colorize";
+    case blendmode_t::TINT:
+        return "Tint";
+    case blendmode_t::SATURATE2:
+        return "Saturate2";
+    case blendmode_t::VALUE:
+        return "Value";
+    case blendmode_t::ADD:
+        return "Add";
+    case blendmode_t::SUB:
+        return "Sub";
+    case blendmode_t::MULTIPLY:
+        return "Multiply";
+    case blendmode_t::SCREEN:
+        return "Screen";
+    case blendmode_t::REPLACE:
+        return "Replace";
+    case blendmode_t::SUBSTITUTE:
+        return "Substitute";
+    case blendmode_t::DIFFERENCE:
+        return "Difference";
+    case blendmode_t::DIVIDE:
+        return "Divide";
+    case blendmode_t::OVERLAY:
+        return "Overlay";
+    case blendmode_t::OVERLAY2:
+        return "Overlay2";
+    case blendmode_t::DODGE:
+        return "Dodge";
+    case blendmode_t::BURN:
+        return "Burn";
+    case blendmode_t::HARDLIGHT:
+        return "Hard Light";
+    case blendmode_t::SOFTLIGHT:
+        return "Soft Light";
+    case blendmode_t::GRAINEXTRACT:
+        return "Grain Extract";
+    case blendmode_t::GRAINMERGE:
+        return "Grain Merge";
+    case blendmode_t::SUBTRACT:
+        return "Subtract";
+    case blendmode_t::DARKENONLY:
+        return "Darken Only";
+    case blendmode_t::LIGHTENONLY:
+        return "Lighten Only";
+    case blendmode_t::ALPHADIFF:
+        return "Alpha Diff";
+    }
+    return "COLOR";
+}
+
+#ifdef RESTORE_DIFFERENCE
+#define DIFFERENCE 11
+#undef RESTORE_DIFFERENCE
+#endif
+
 void Layer::print_info() {
     auto s = std::format(R"(Layer:
 Name: {}
 Frame Offset: {}
+Frames in Layer: {}
 Repeat In / Repeat Out: {} / {}
 Group: {}
 
 Opacity: {}%
+Blend Mode: {}
 
 Layer Flags:
 Invisible: {}
@@ -133,9 +212,9 @@ Locked: {}
 Position Locked: {}
 Preserve Transparency: {}
 )",
-name, frame_offset, 
+name, frame_offset, frames_amount,
 repeat_t_to_str(repeat_in_type), repeat_t_to_str(repeat_out_type),
-group_id, opacity,
+group_id, opacity, blendmode_t_to_str(blend_mode),
 invisible, lighttable, stencil, locked, position_locked, preserve_trans
 );
     std::cout << s;

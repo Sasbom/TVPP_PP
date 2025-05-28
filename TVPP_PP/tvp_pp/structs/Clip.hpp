@@ -16,10 +16,10 @@ struct Clip{
 	double dialog_size{};
 	double action_size{};
 	double note_size{};
-	std::size_t mark_in{};
-	std::size_t mark_in_pos{};
-	std::size_t mark_out{};
-	std::size_t mark_out_pos{};
+	bool mark_in{};
+	long int mark_in_pos{};
+	bool mark_out{};
+	long int mark_out_pos{};
 	bool hidden{};
 	std::size_t color_idx{};
 

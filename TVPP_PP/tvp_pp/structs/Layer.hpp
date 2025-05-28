@@ -17,6 +17,48 @@ enum struct repeat_t{
 	HOLD, // Hold first / last frame.
 };
 
+#ifdef DIFFERENCE // on msvc, difference is a macro in winuser.
+#define RESTORE_DIFFERENCE
+#undef DIFFERENCE
+#endif
+
+enum struct blendmode_t {
+	COLOR,
+	BEHIND,
+	ERASE,
+	SHADE,
+	LIGHT,
+	COLORIZE,
+	TINT,
+	SATURATE2,
+	VALUE,
+	ADD,
+	SUB,
+	MULTIPLY,
+	SCREEN,
+	REPLACE,
+	SUBSTITUTE,
+	DIFFERENCE, 
+	DIVIDE,
+	OVERLAY,
+	OVERLAY2,
+	DODGE,
+	BURN,
+	HARDLIGHT,
+	SOFTLIGHT,
+	GRAINEXTRACT,
+	GRAINMERGE,
+	SUBTRACT,
+	DARKENONLY,
+	LIGHTENONLY,
+	ALPHADIFF,
+};
+
+#ifdef RESTORE_DIFFERENCE
+#define DIFFERENCE 11
+#undef RESTORE_DIFFERENCE
+#endif
+
 struct Layer: std::enable_shared_from_this<Layer> {
 	using buffer_var = std::variant<Buffer_DBOD, Buffer_SRAW, Buffer_SRAW_Repeat>;
 	using buffer_vec = std::vector<std::unique_ptr<buffer_var>>;
@@ -34,7 +76,10 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	std::string name_ascii{};
 
 	std::size_t first_frame_num{};
-	std::size_t frame_offset{};
+	long int frame_offset{};
+	std::size_t frames_amount{};
+
+	blendmode_t blend_mode{};
 
 	// Replace these repeat in/out w/ enum class type
 	repeat_t repeat_in_type{};
@@ -68,6 +113,7 @@ private:
 	cache_t& in_range_cache(std::size_t const& frame);
 
 	std::string repeat_t_to_str(repeat_t const& rep);
+	std::string blendmode_t_to_str(blendmode_t const& blend);
 
-	static cache_t EMPTY_CACHE; // must remain empty.
+	cache_t EMPTY_CACHE; // must remain empty.
 };

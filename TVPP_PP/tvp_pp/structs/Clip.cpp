@@ -60,7 +60,7 @@ Clip::Clip(std::vector<std::string>& headerinfo) {
 				break;
 			}
 			case 7: {
-				mark_in = data::parse_assume<int>(*(it + 1));
+				mark_in = static_cast<bool>(data::parse_assume<int>(*(it + 1)));
 				it++;
 				break;
 			}
@@ -70,7 +70,7 @@ Clip::Clip(std::vector<std::string>& headerinfo) {
 				break;
 			}
 			case 9: {
-				mark_out = data::parse_assume<int>(*(it + 1));
+				mark_out = static_cast<bool>(data::parse_assume<int>(*(it + 1)));
 				it++;
 				break;
 			}
