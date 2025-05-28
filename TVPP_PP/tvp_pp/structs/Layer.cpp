@@ -1,6 +1,7 @@
 #include "Layer.hpp"
 #include "../num_util.hpp"
 #include "../file_util.hpp"
+#include "../zlib_util.hpp"
 #include <cmath>
 #include <format>
 #include <iostream>
@@ -261,8 +262,12 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                 auto _64 = *(it + 31);
                 if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
                     LOG("SRAW REPEAT!\n");
+                    auto rep_sraw_source = seek_ZCHK_SRAW(mmap, offset);
+                    auto rep_sraw_span = std::span(rep_sraw_source.begin(), rep_sraw_source.end());
+                    decompress_span_zlib(rep_sraw_span);
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
-                    offset += 64;
+                    
+                    //offset += 64;
                     it = mmap.begin() + offset;
                     continue;
                 }
@@ -340,6 +345,8 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
         return str;
     };
 
+    this->cache_layer_contents();
+    std::size_t real_frame{};
     for (auto& frame : frames) {
         auto fullpath = path + std::format("{}_{}_{}.png", name_ascii.c_str(), prefix, pad(framenr));
         auto fullpathbin = path + std::format("{}_{}_{}.bin", name_ascii.c_str(), prefix, pad(framenr));
@@ -347,27 +354,35 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
 
         std::cout << "Writing out " << fullpath << "\n";
 
-        framebuf_raw_t fr{};
-        if (ptr->index() == 0) {
-            auto& lyr = std::get<0>(*ptr);
-            fr = lyr.get_framebuffer();
-        } else if (ptr->index() == 1) {
-            auto& lyr = std::get<1>(*ptr);
-            fr = lyr.get_framebuffer();
-        }
-        else if (ptr->index() == 2) {
-            auto& lyr = std::get<2>(*ptr);
-            fr = lyr.get_framebuffer();
-        }
+        //framebuf_raw_t fr{};
+        //if (ptr->index() == 0) {
+        //    auto& lyr = std::get<0>(*ptr);
+        //    fr = lyr.get_framebuffer();
+        //} else if (ptr->index() == 1) {
+        //    auto& lyr = std::get<1>(*ptr);
+        //    fr = lyr.get_framebuffer();
+        //}
+        //else if (ptr->index() == 2) {
+        //    auto& lyr = std::get<2>(*ptr);
+        //    fr = lyr.get_framebuffer();
+        //}
         //std::cout << "writing it. " << fr.size() << "\n";
         //auto f = std::ofstream(fullpathbin.c_str(), std::ios::binary);
         //f.write(reinterpret_cast<char*>(fr.data()), fr.size());
         //f.close();
-
+        try
+        {
+        framebuf_raw_t& fr = get_cache_at_frame(real_frame).value();
         stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
+        }
+        catch (const std::bad_optional_access& e)
+        {
+            std::cout << e.what() << '\n';
+        }
         framenr += 1;
+        real_frame++;
     }
-
+    this->clear_layer_contents();
 }
 
 cache_t& Layer::in_range_cache(std::size_t const& frame) {
@@ -392,7 +407,7 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
     
     if (frame < frame_offset) {
     // PRE-BEHAVIOR.
-        switch (this->repeat_out_type) {
+        switch (this->repeat_in_type) {
         case repeat_t::NONE: {
             return this->EMPTY_CACHE;
         }
@@ -416,7 +431,7 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
             auto cycle_index = cur_frame_idx % cycle_size;
             std::size_t real_idx;
             if (cycle_index >= frames.size()) {
-                real_idx = (-cycle_index) % cycle_size;
+                real_idx = cycle_size - cycle_index;
             }
             else {
                 real_idx = cycle_index;
@@ -442,19 +457,16 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
         case repeat_t::PINGPONG: {
             int long cur_frame_idx = frame - frame_offset;
 
-            // early return optimization
             if (frames.size() == 1) {
                 return in_range_cache(frames.size()-1);
             } else if (frames.size() == 2) {
                 return in_range_cache(cur_frame_idx % frames.size());
             }
-            // size 3 cycle 4    || size 4 cycle 6       || size 5 cycle 8
-            // 1 2 3 [ 2 ] 1 2.. || 1 2 3 4 [3 2] 1 2 .. || 1 2 3 4 5 [4 3 2] 1 2..
             long int cycle_size = frames.size() * 2 - 2;  
             auto cycle_index = cur_frame_idx % cycle_size;
             std::size_t real_idx;
             if (cycle_index >= frames.size()) {
-                real_idx = (-cycle_index) % cycle_size;
+                real_idx = cycle_size - cycle_index;
             }
             else {
                 real_idx = cycle_index;
