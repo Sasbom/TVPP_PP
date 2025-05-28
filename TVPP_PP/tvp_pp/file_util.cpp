@@ -78,7 +78,9 @@ std::span<std::uint8_t const> seek_3byteimbuffer(mio::ummap_source& mmap_file, s
 // DEPECRATE?
 std::span<std::uint8_t const> seek_ZCHK_SRAW(mio::ummap_source& mmap_file, std::size_t& offset) {
 	// ZCHK [4 byt] SRAW [4 byt] czmp [16byt] [Length ZLIB 4 byt] [ ZLIB BLOCKS -> ]
-	// The ZLIB blocks can contain multiple headers contiguously.
+	// The ZLIB blocks can contain multiple headers contiguously, also split by 12 byte headers.
+	// That is why this function is preferred only for really short sections.
+	// seek_ZCHK_SRAW_VEC should be the one you use to do big business.
 	constexpr static std::uint32_t const ZCHK = 0x5A43484B;
 	constexpr static std::uint32_t const SRAW = 0x53524157;
 	constexpr static std::uint32_t const czmp = 0x637A6D70;

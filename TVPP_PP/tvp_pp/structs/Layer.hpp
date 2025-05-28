@@ -59,6 +59,12 @@ enum struct blendmode_t {
 #undef RESTORE_DIFFERENCE
 #endif
 
+enum struct SRAW_repeatimages_t {
+	LOOP = 1,
+	PINGPONG = 4,
+	RANDOM = 5,
+};
+
 struct Layer: std::enable_shared_from_this<Layer> {
 	using buffer_var = std::variant<Buffer_DBOD, Buffer_SRAW, Buffer_SRAW_Repeat>;
 	using buffer_vec = std::vector<std::unique_ptr<buffer_var>>;

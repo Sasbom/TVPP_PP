@@ -226,6 +226,10 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
     auto read_4 = [](std::uint8_t const* it) {
         return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
     };
+
+    auto read_4_b = [](auto it) {
+        return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
+    };
     constexpr static std::uint32_t const ZCHK = 0x5A43484B;
     constexpr static std::uint32_t const DBOD = 0x44424F44;
     constexpr static std::uint32_t const SRAW = 0x53524157;
@@ -264,10 +268,13 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                     LOG("SRAW REPEAT!\n");
                     auto rep_sraw_source = seek_ZCHK_SRAW(mmap, offset);
                     auto rep_sraw_span = std::span(rep_sraw_source.begin(), rep_sraw_source.end());
-                    decompress_span_zlib(rep_sraw_span);
+                    auto sraw_info = decompress_span_zlib(rep_sraw_span);
+                    // read out "Repeat Images" section
+                    std::size_t repeat_mode = read_4_b(sraw_info.begin() + 12);
+                    std::size_t repeat_length = read_4_b(sraw_info.begin() + 16);
+                    LOG("Repeat byte: " << repeat_mode << " Repeat length: " << repeat_length)
                     frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
-                    
-                    //offset += 64;
+                    //offset += 64; (is already moved by seek_ZCHK_SRAW)
                     it = mmap.begin() + offset;
                     continue;
                 }
