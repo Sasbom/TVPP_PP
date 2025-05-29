@@ -367,7 +367,6 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             long int  pingpong_real_index = 0;
 
                             long int pingpong_cycle_index = rel_index % (pingpong_cycle_size);
-                            long int pingpong_real_index = 0;
                             
                             if (pingpong_cycle_index >= repeat_images_length) {
                                 pingpong_real_index = pingpong_cycle_size - pingpong_cycle_index;

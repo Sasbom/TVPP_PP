@@ -327,4 +327,5 @@ framebuf_raw_t Buffer_SRAW_Repeat::get_framebuffer() {
 		return std::get<0>(sraw_source)->get_framebuffer();
 	if (sraw_source.index() == 1)
 		return std::get<1>(sraw_source)->get_framebuffer();
+	return framebuf_raw_t{};
 }
