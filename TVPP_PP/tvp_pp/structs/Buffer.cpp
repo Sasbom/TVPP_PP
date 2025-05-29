@@ -150,6 +150,8 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 	};
 	std::size_t offset = 20 + thumbnail_offset;
 	// start reading from thumnbail onwards into interim buffer.
+	//std::cout << "rolbuf size: " << rolled_buffer.size() << "\n";
+	//std::cout << std::format("{}\n", rolled_buffer);
 	for (auto it = rolled_buffer.begin() + 20 + thumbnail_offset; it != rolled_buffer.end();/* it++ */) {
 		
 		if (!check_valid(it))
@@ -157,6 +159,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 
 		std::size_t length = read_4(it);
 		if (length == 0) {
+			//std::cout << "length 0 read";
 			std::size_t source_frame = read_4(it + 4);
 			std::size_t repeat_type = read_4(it + 8);
 			// ALWAYS repeat type.
@@ -165,6 +168,7 @@ void Buffer_SRAW::unroll_source_to_cache()  {
 			continue;
 		}
 		else {
+			//std::cout << "RLE read";
 			it += 4;
 			auto rle_buf = std::span(it, it + length);
 			auto buf = unroll_rle(rle_buf);

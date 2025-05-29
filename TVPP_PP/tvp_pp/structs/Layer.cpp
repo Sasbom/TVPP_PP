@@ -11,6 +11,8 @@
 #include <random>
 #include <functional>
 
+#define LAYER_VERBOSE
+
 #ifdef LAYER_VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
 #else
@@ -282,10 +284,10 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
             if (sig == SRAW) {
                 // first, check for repeat magic bytes
                 auto _c0 = *(it + 15);
-                auto _2f = *(it + 23);
+                //auto _2f = *(it + 23); // in other SRAW REPEAT frames this one can vary.
                 auto _01 = *(it + 27);
                 auto _64 = *(it + 31);
-                if ((_c0 == 12) && (_2f == 47) && (_01 == 1) && (_64 == 100)) {
+                if ((_c0 == 12) /* && (_2f == 47)*/ && (_01 == 1) && (_64 == 100)) {
                     LOG("SRAW REPEAT!\n");
                     auto rep_sraw_source = seek_ZCHK_SRAW(mmap, offset);
                     it = mmap.begin() + offset;
@@ -520,11 +522,11 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
 
     auto pad = [](int long const& num, std::size_t len = 4) {
         auto str = std::to_string(std::abs(num));
-        if (num < 0) {
-            str.insert(str.begin(), '-');
-        }
         while (str.length() != len) {
             str.insert(str.begin(), '0');
+        }
+        if (num < 0) {
+            str.insert(str.begin(), '-');
         }
         return str;
     };
