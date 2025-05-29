@@ -15,6 +15,8 @@
 #define LOG(message)
 #endif
 
+#define NOMINMAX
+
 
 Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_idx = 0, std::size_t const& layer_idx = 0 ) {
 	auto read_4 = [](auto it) {
@@ -230,6 +232,11 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
     auto read_4_b = [](auto it) {
         return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
     };
+    
+    auto limit_to_zero = [](auto&& n) {
+        return (n > 0) ? n : 0;
+    };
+    
     constexpr static std::uint32_t const ZCHK = 0x5A43484B;
     constexpr static std::uint32_t const DBOD = 0x44424F44;
     constexpr static std::uint32_t const SRAW = 0x53524157;
@@ -242,7 +249,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
     bool repeat_images{ false };
     SRAW_repeatimages_t mode = SRAW_repeatimages_t::LOOP; // default
     std::size_t repeat_images_length{ 0 };
-    std::size_t repeat_images_start_index{ 0 };
+    long int repeat_images_start_index{ 0 };
 
     while (true) {
         auto hdr = read_4(it);
@@ -284,23 +291,88 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                     // either 0 or 1 doesn't get acknowledged as a proper "repeat images" start.
                     auto repeat_mode = static_cast<SRAW_repeatimages_t>(read_4_b(sraw_info.begin() + 12));
                     std::size_t repeat_length = read_4_b(sraw_info.begin() + 16);
+                    LOG("Repeat byte: " << static_cast<int>(repeat_mode) << " Repeat length: " << repeat_length)
                     
                     if (!repeat_images && repeat_length > 1) {
                         // switch to processing new repeat images section
                         repeat_images = true;
                         mode = repeat_mode;
+                        repeat_images_length = repeat_length;
                         repeat_images_start_index = frames.size(); // doesn't have to be subtracted because we're pushing back later
                     }
                     else if (repeat_images && repeat_length > 1) {
                         // new image repeat section in same span of exposures/sraw_repeat frames
                         mode = repeat_mode;
+                        repeat_images_length = repeat_length;
                         repeat_images_start_index = frames.size();
                     }
+                    if (repeat_images) {
+                        switch (mode) {
+                        case SRAW_repeatimages_t::LOOP: {
+                            // [exp] denotes an "exposure" frame, aka a SRAW_REPEAT without any repeat images.
+                            // ---
+                            // 0 1 2 3 [loop 4] [exp] [exp] [exp] [exp] [exp] [exp] ...
+                            // 0 1 2 3 0        1     2     3     0     1     2     3
+                            //
+                            // 0 1 2 3 [loop 6] [exp] [exp] [exp] [exp] [exp] [exp] [exp] [exp] [exp] ...
+                            // 0 1 2 3 0        0     0     0     1     2     3     0     0     0     1
+                            
+                            // before insertion, frames.size() reflects the position the new frame is going to be at.
+                            long int current_index = frames.size(); 
+                            long int rel_index = current_index - repeat_images_start_index - repeat_images_start_index;
+                            // repeat, accounting for overshooting and mimicking TVPain(t)s behavior to clamp to lowest index.
+                            long int sample_index = ((rel_index % repeat_images_length)) - (repeat_images_length - repeat_images_start_index);
+                            sample_index = limit_to_zero(sample_index);
 
-                    LOG("Repeat byte: " << static_cast<int>(repeat_mode) << " Repeat length: " << repeat_length)
-                    frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
-                    //offset += 64; (is already moved by seek_ZCHK_SRAW)
-                    continue;
+                            auto sample_buffer = frames[sample_index].get();
+                            Buffer_SRAW_Repeat::buffer_source source;
+                            if (sample_buffer->index() == 0) {
+                                source = &std::get<0>(*sample_buffer);
+                            }
+                            else if (sample_buffer->index() == 1) {
+                                source = &std::get<1>(*sample_buffer);
+                            }
+                            else if (sample_buffer->index() == 2) {
+                                auto repeat = std::get<2>(*sample_buffer);
+                                if (!repeat.is_from_repeatimages){
+                                    source = repeat.sraw_source;
+                                }
+                                else {
+                                    // stick to last frame if origin of this frame was from a repeat images section.
+                                    // This mirrors the behavior where in TVpaint, exposures are always looking towards the last frame. 
+                                    source = last; 
+                                }
+                            }
+                            // push back with info that this frame came from a Repeat Images section
+                            frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(source, true)));
+                            break;
+                        }
+                        case SRAW_repeatimages_t::PINGPONG: {
+
+                            break;
+                        }
+                        case SRAW_repeatimages_t::RANDOM: {
+                            // I HAVE NO IDEA WHAT THE HELL IM SUPPOSED TO DO HERE, OKAY??
+                            // I wouldn't want this behavior to be truly random because that could cause inconsistencies
+                            // in distributed rendering.
+                            // Maybe I'll generate some deterministic "seed" value from the UUID of the layer,
+                            // and feed it to the mersenne twister engine.
+                            // this means deterministic "random" behavior at least...
+                            // I have no guarrantee that the behavior will mirror TVPaint, though.
+                            // 
+                            // Thanks for listening,
+                            // Sas van Gulik - 29 05 2025.
+                            break;
+                        }
+                        }
+                        continue;
+                    }
+                    else {
+                        // normal repeat.
+                        frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(last)));
+                        //offset += 64; (is already moved by seek_ZCHK_SRAW)
+                        continue;
+                    }
                 }
                 else {
                     LOG("SRAW OG!");

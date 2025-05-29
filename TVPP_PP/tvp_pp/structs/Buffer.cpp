@@ -74,6 +74,11 @@ Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(buffer_source source) {
 	sraw_source = source;
 };
 
+Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(buffer_source source, bool const& is_from_repeatimages) {
+	sraw_source = source;
+	this->is_from_repeatimages = true;
+}
+
 Buffer_SRAW_Repeat::Buffer_SRAW_Repeat(Buffer_SRAW& source) {
 	sraw_source = &source;
 };

@@ -102,8 +102,11 @@ struct Buffer_SRAW_Repeat: public Buffer{
 	Buffer_SRAW_Repeat(Buffer_DBOD& source_sraw);
 	Buffer_SRAW_Repeat(Buffer_SRAW& source_sraw);
 	Buffer_SRAW_Repeat(buffer_source source_sraw);
+	Buffer_SRAW_Repeat(buffer_source source_sraw, bool const & is_from_repeatimages);
 
 	buffer_source sraw_source;
+
+	bool is_from_repeatimages{ false };
 
 	void unroll_source_to_cache() override;
 	framebuf_raw_t get_framebuffer() override;
