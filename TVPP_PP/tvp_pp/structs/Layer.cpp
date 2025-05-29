@@ -8,6 +8,8 @@
 #include <filesystem>
 #include "../../stb/stb_image_write.h"
 #include <fstream>
+#include <random>
+#include <functional>
 
 #ifdef LAYER_VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
@@ -251,6 +253,10 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
     std::size_t repeat_images_length{ 0 };
     long int repeat_images_start_index{ 0 };
 
+    std::size_t random_hash = std::hash<std::string>()(std::format("{}{}{}", this->clip_idx, this->layer_idx, this->name));
+    auto twister = std::mt19937();
+    twister.seed(static_cast<std::mt19937::result_type>(random_hash));
+    
     while (true) {
         auto hdr = read_4(it);
 
@@ -400,13 +406,41 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             // I HAVE NO IDEA WHAT THE HELL IM SUPPOSED TO DO HERE, OKAY??
                             // I wouldn't want this behavior to be truly random because that could cause inconsistencies
                             // in distributed rendering.
-                            // Maybe I'll generate some deterministic "seed" value from the UUID of the layer,
+                            // Maybe I'll generate some deterministic "seed" value from the position of the layer in the file,
                             // and feed it to the mersenne twister engine.
                             // this means deterministic "random" behavior at least...
                             // I have no guarrantee that the behavior will mirror TVPaint, though.
                             // 
                             // Thanks for listening,
                             // Sas van Gulik - 29 05 2025.
+                            std::size_t upper_bound = repeat_images_start_index-1;
+                            std::size_t lower_bound = limit_to_zero(repeat_images_start_index - repeat_images_length);
+
+                            auto distributor = std::uniform_int_distribution(upper_bound, lower_bound);
+
+                            std::size_t sample = distributor(twister);
+
+                            auto sample_buffer = frames[sample].get();
+                            Buffer_SRAW_Repeat::buffer_source source;
+                            if (sample_buffer->index() == 0) {
+                                source = &std::get<0>(*sample_buffer);
+                            }
+                            else if (sample_buffer->index() == 1) {
+                                source = &std::get<1>(*sample_buffer);
+                            }
+                            else if (sample_buffer->index() == 2) {
+                                auto repeat = std::get<2>(*sample_buffer);
+                                if (!repeat.is_from_repeatimages) {
+                                    source = repeat.sraw_source;
+                                }
+                                else {
+                                    // stick to last frame if origin of this frame was from a repeat images section.
+                                    // This mirrors the behavior where in TVpaint, exposures are always looking towards the last frame. 
+                                    source = last;
+                                }
+                            }
+                            // push back with info that this frame came from a Repeat Images section
+                            frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(source, true)));
                             break;
                         }
                         }
