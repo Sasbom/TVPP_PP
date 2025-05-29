@@ -362,13 +362,16 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             // PING PONG LAST SET OF FRAMES.
                             // FOR EXAMPLE: START IDX = 8 ; LENGTH = 5
                             // 0 1 2 [3 4 5 6 7] start pingpong 6 5 4 3 4 5 6 7 6 5 4 3 4 5 6 7
+
+                            // this is not completely functional.
+
                             long int current_index = frames.size();
                             long int pingpong_cycle_size = repeat_images_length * 2 - 2;
                             long int rel_index = current_index - repeat_images_start_index - pingpong_cycle_size + 1;
 
-                            long int  pingpong_real_index = 0;
+                            long int pingpong_real_index = 0;
 
-                            long int pingpong_cycle_index = rel_index % (pingpong_cycle_size);
+                            long int pingpong_cycle_index = std::abs(rel_index % (pingpong_cycle_size));
                             
                             if (pingpong_cycle_index >= repeat_images_length) {
                                 pingpong_real_index = pingpong_cycle_size - pingpong_cycle_index;
@@ -378,6 +381,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             }
 
                             long int pingpong_idx = repeat_images_start_index - pingpong_real_index - 1;
+                            std::cout << std::format("start: {} , end_idx {}, real_idx {}, cycle_idx: {} rel_index: {}\n", repeat_images_start_index, pingpong_idx, pingpong_real_index, pingpong_cycle_index, rel_index);
                             pingpong_idx = limit_to_zero(pingpong_idx);
 
                             auto sample_buffer = frames[pingpong_idx].get();
@@ -558,7 +562,7 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
         //f.close();
         try
         {
-        framebuf_raw_t& fr = get_cache_at_frame(real_frame).value();
+        framebuf_raw_t& fr = get_cache_at_frame(framenr).value();
         stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
         }
         catch (const std::bad_optional_access& e)
