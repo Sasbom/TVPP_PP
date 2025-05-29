@@ -69,7 +69,7 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	using buffer_var = std::variant<Buffer_DBOD, Buffer_SRAW, Buffer_SRAW_Repeat>;
 	using buffer_vec = std::vector<std::unique_ptr<buffer_var>>;
 
-	Layer(std::span<std::uint8_t const>& layer_info, std::size_t const & clip_idx, std::size_t const& layer_idx);
+	Layer(std::span<std::uint8_t const>& layer_info, std::size_t const & clip_idx, std::size_t const& layer_idx, std::size_t const & buffer_size);
 
 	std::size_t clip_idx{};
 	std::size_t layer_idx{};
@@ -112,6 +112,7 @@ struct Layer: std::enable_shared_from_this<Layer> {
 	cache_t& get_cache_at_frame(int long const& frame);
 
 	void dump_frames(std::string const& prefix, std::string const& folder_name, FileInfo& file_info);
+	void dump_frames_markin_markout(std::string const& prefix, std::string const& folder_name, FileInfo& file_info, long int const& in, long int const& out);
 private:
 	void name_from_LNAM_LNAW(std::span<std::uint8_t const> const& LNAM, std::span<std::uint8_t const> const& LNAW);
 	void unpack_layerflags(std::uint8_t const& layer_flags);

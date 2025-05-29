@@ -11,7 +11,7 @@
 #include <random>
 #include <functional>
 
-//#define LAYER_VERBOSE
+#define LAYER_VERBOSE
 
 #ifdef LAYER_VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
@@ -22,7 +22,7 @@
 #define NOMINMAX
 
 
-Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_idx = 0, std::size_t const& layer_idx = 0 ) {
+Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_idx = 0, std::size_t const& layer_idx = 0, std::size_t const & buffer_size = 1920*1080*4 ) {
 	auto read_4 = [](auto it) {
 		return bigend_cast_from_ints<std::uint32_t>(*it, *(it + 1), *(it + 2), *(it + 3));
 	};
@@ -65,6 +65,10 @@ Layer::Layer(std::span<std::uint8_t const>& layer_info, std::size_t const& clip_
     this->repeat_out_type = static_cast<repeat_t>(*(LRHD_end + 46-1));
     this->repeat_in_type = static_cast<repeat_t>(*(LRHD_end + 54-1));
     this->group_id = *(LRHD_end + 58-1);
+
+    auto emptybuf = framebuf_raw_t{};
+    emptybuf.resize(buffer_size,static_cast<std::uint8_t>(0));
+    this->EMPTY_CACHE = emptybuf;
 }
 
 // I'm wondering if I can't just grab the LNAW and LNAM both.
@@ -333,12 +337,13 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             // 0 1 2 3 0        0     0     0     1     2     3     0     0     0     1
                             
                             // before insertion, frames.size() reflects the position the new frame is going to be at.
-                            long int current_index = frames.size(); 
-                            long int rel_index = current_index - repeat_images_start_index - repeat_images_start_index;
+                            long int current_index = static_cast<long int>(frames.size()); 
+                            long int rel_index = current_index - repeat_images_start_index;
+                            long int offset = repeat_images_start_index - static_cast<long int>(repeat_images_length);
                             // repeat, accounting for overshooting and mimicking TVPain(t)s behavior to clamp to lowest index.
-                            long int sample_index = ((rel_index % repeat_images_length)) - (repeat_images_length - repeat_images_start_index);
+                            long int sample_index = offset + (alt_mod(rel_index, static_cast<long int>(repeat_images_length)));
                             sample_index = limit_to_zero(sample_index);
-
+                            std::cout << std::format("current idx: {}, sampled idx: {}, offset: {}\n", current_index, sample_index, offset);
                             auto sample_buffer = frames[sample_index].get();
                             Buffer_SRAW_Repeat::buffer_source source;
                             if (sample_buffer->index() == 0) {
@@ -369,7 +374,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
 
                             // this is not completely functional.
 
-                            long int current_index = frames.size();
+                            long int current_index = static_cast<long int>(frames.size());
                             long int pingpong_cycle_size = repeat_images_length * 2 - 2;
                             long int rel_index = current_index - repeat_images_start_index - pingpong_cycle_size + 1;
 
@@ -579,6 +584,46 @@ void Layer::dump_frames(std::string const& prefix, std::string const& folder_nam
     this->clear_layer_contents();
 }
 
+void Layer::dump_frames_markin_markout(std::string const& prefix, std::string const& folder_name, FileInfo& file_info, long int const& in, long int const & out) {
+    namespace fs = std::filesystem;
+
+    std::string path = folder_name + "\\";
+    auto fpath = fs::path(folder_name);
+    fs::create_directory(fpath);
+
+    auto pad = [](int long const& num, std::size_t len = 4) {
+        auto str = std::to_string(std::abs(num));
+        while (str.length() != len) {
+            str.insert(str.begin(), '0');
+        }
+        if (num < 0) {
+            str.insert(str.begin(), '-');
+        }
+        return str;
+        };
+
+    this->cache_layer_contents();
+
+    for (long int framenr{ in }; framenr <= out; framenr++) {
+        auto fullpath = path + std::format("{}_{}_{}.png", name_ascii.c_str(), prefix, pad(framenr));
+        auto fullpathbin = path + std::format("{}_{}_{}.bin", name_ascii.c_str(), prefix, pad(framenr));
+
+        std::cout << "Writing out " << fullpath << "\n";
+
+        try
+        {
+            framebuf_raw_t& fr = get_cache_at_frame(framenr).value();
+            stbi_write_png(fullpath.c_str(), file_info.width, file_info.height, 4, fr.data(), 4 * file_info.width);
+        }
+        catch (const std::bad_optional_access& e)
+        {
+            std::cout << e.what() << '\n';
+        }
+
+    }
+    this->clear_layer_contents();
+}
+
 cache_t& Layer::in_range_cache(std::size_t const& frame) {
     auto ptr = frames.at(frame).get();
 
@@ -597,19 +642,26 @@ cache_t& Layer::in_range_cache(std::size_t const& frame) {
 
 // fetch cache at frame taking pre and post behavior into account
 cache_t& Layer::get_cache_at_frame(int long const& frame) {
-    auto frames_amt = this->frames.size();
+    long int frames_amt = this->frames.size();
     
+    auto alt_mod = [](long int const& a, long int const& b) {
+        return ((a % b) + b) % b;
+    };
+    //std::cout << "frame: " << frame << " frame offset: " << frame_offset << "\n";
     if (frame < frame_offset) {
     // PRE-BEHAVIOR.
         switch (this->repeat_in_type) {
         case repeat_t::NONE: {
+            LOG("PRE NONE");
             return this->EMPTY_CACHE;
         }
         case repeat_t::REPEAT: {
+            LOG("PRE REPEAT");
             int long cur_frame_idx = frame - frame_offset;
-            return in_range_cache(cur_frame_idx % frames.size());
+            return in_range_cache(alt_mod(cur_frame_idx, frames.size()));
         }
         case repeat_t::PINGPONG: {
+            LOG("PRE PINGPONG");
             int long cur_frame_idx = frame - frame_offset;
             
             // early return optimization
@@ -617,12 +669,12 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
                 return in_range_cache(0);
             }
             else if (frames.size() == 2) {
-                return in_range_cache(cur_frame_idx % frames.size());
+                return in_range_cache(alt_mod(cur_frame_idx, frames.size()));
             }
             // size 3 cycle 4    || size 4 cycle 6       || size 5 cycle 8
             // 1 2 3 [ 2 ] 1 2.. || 1 2 3 4 [3 2] 1 2 .. || 1 2 3 4 5 [4 3 2] 1 2..
             long int cycle_size = frames.size() * 2 - 2;
-            auto cycle_index = cur_frame_idx % cycle_size;
+            auto cycle_index = alt_mod(cur_frame_idx , cycle_size);
             std::size_t real_idx;
             if (cycle_index >= frames.size()) {
                 real_idx = cycle_size - cycle_index;
@@ -633,6 +685,7 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
             return in_range_cache(real_idx);
         }
         case repeat_t::HOLD: {
+            LOG("PRE HOLD");
             return in_range_cache(0); // first frame
         }
         }
@@ -640,24 +693,28 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
     }
     else if (frame >= frame_offset + frames_amt) {
         // POST-BEHAVIOR.
+        //std::cout << "POST\n" << "frame_offset: " << frame_offset << " frames_amt: " << frames_amt << "\n";
         switch (this->repeat_out_type) {
         case repeat_t::NONE: {
+            LOG("POST NONE");
             return this->EMPTY_CACHE;
         }
         case repeat_t::REPEAT: {
+            LOG("POST REPEAT");
             int long cur_frame_idx = frame - frame_offset;
-            return in_range_cache(cur_frame_idx % frames.size());
+            LOG(cur_frame_idx << " sample: " << alt_mod(cur_frame_idx, frames.size()))
+            return in_range_cache(alt_mod(cur_frame_idx,frames.size()));
         }
         case repeat_t::PINGPONG: {
             int long cur_frame_idx = frame - frame_offset;
-
+            LOG("POST PINGPONG");
             if (frames.size() == 1) {
                 return in_range_cache(frames.size()-1);
             } else if (frames.size() == 2) {
-                return in_range_cache(cur_frame_idx % frames.size());
+                return in_range_cache(alt_mod(cur_frame_idx, frames.size()));
             }
             long int cycle_size = frames.size() * 2 - 2;  
-            auto cycle_index = cur_frame_idx % cycle_size;
+            auto cycle_index = alt_mod(cur_frame_idx, cycle_size);
             std::size_t real_idx;
             if (cycle_index >= frames.size()) {
                 real_idx = cycle_size - cycle_index;
@@ -668,6 +725,7 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
             return in_range_cache(real_idx);
         }
         case repeat_t::HOLD: {
+            LOG("POST HOLD");
             return in_range_cache(frames.size()-1); // last frame
         }
         }
@@ -675,6 +733,7 @@ cache_t& Layer::get_cache_at_frame(int long const& frame) {
     else {
         // ACTUAL IN-RANGE BEHAVIOR
         std::size_t cur_frame_idx = frame - frame_offset;
+        //std::cout << "current frame: " << cur_frame_idx << "\n";
         return in_range_cache(cur_frame_idx);
     }
     

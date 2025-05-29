@@ -37,9 +37,9 @@ void File::clip_cycle(mio::ummap_source& mmap) {
 		
 		while (next == LEXT_AFTER::LAYER) {
 			auto layer_hdr = seek_layer_header(mmap, offset);
-			clips.back()->layers.push_back(std::make_shared<Layer>(layer_hdr, clips.size()-1,clips.back()->layers.size()-1));
+			clips.back()->layers.push_back(std::make_shared<Layer>(layer_hdr, clips.size()-1,clips.back()->layers.size()-1, this->file_info.width * this->file_info.height * 4));
 			clips.back()->layers.back()->read_into_layer(mmap, offset, file_info);
-
+			
 			next = seek_LEXT_UDAT_STCK_FCFG(mmap, offset);
 			//std::cout << int(next) << "\n";
 		}
@@ -76,6 +76,30 @@ void File::dump_file() {
 			std::string folder = std::format("{}_{}\\{}", base, c->name.c_str(),l->name_ascii.c_str());
 			std::cout << l->name << "\n";
 			l->dump_frames("filedump", folder.c_str(), file_info);
+		}
+	}
+}
+
+void File::dump_file_mark() {
+	namespace fs = std::filesystem;
+	std::string base = "markin_markout";
+
+	file_info.print_info();
+
+	std::cout << "Dumping all file contents...\n";
+
+	for (auto& c : clips) {
+		std::string basefolder = std::format("{}_{}", base, c->name.c_str());
+		auto fpath = fs::path(basefolder);
+		fs::create_directory(fpath);
+
+		auto in = c->mark_in_pos;
+		auto out = c->mark_out_pos;
+
+		for (auto& l : c->layers) {
+			std::string folder = std::format("{}_{}\\{}", base, c->name.c_str(), l->name_ascii.c_str());
+			std::cout << l->name << "\n";
+			l->dump_frames_markin_markout("filedump", folder.c_str(), file_info, in, out);
 		}
 	}
 }

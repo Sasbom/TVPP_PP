@@ -19,6 +19,7 @@ struct File {
 	void print_layers();
 
 	void dump_file();
+	void dump_file_mark();
 
 private:
 	void clip_cycle(mio::ummap_source& mmap_file);
