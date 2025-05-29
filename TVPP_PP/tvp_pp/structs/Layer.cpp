@@ -11,7 +11,7 @@
 #include <random>
 #include <functional>
 
-#define LAYER_VERBOSE
+//#define LAYER_VERBOSE
 
 #ifdef LAYER_VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
@@ -240,6 +240,10 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
     auto limit_to_zero = [](auto&& n) {
         return (n > 0) ? n : 0;
     };
+
+    auto alt_mod = [](long int const& a, long int const& b) {
+        return ((a % b) + b) % b;
+    };
     
     constexpr static std::uint32_t const ZCHK = 0x5A43484B;
     constexpr static std::uint32_t const DBOD = 0x44424F44;
@@ -371,7 +375,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
 
                             long int pingpong_real_index = 0;
 
-                            long int pingpong_cycle_index = std::abs(rel_index % (pingpong_cycle_size));
+                            long int pingpong_cycle_index = alt_mod(rel_index,pingpong_cycle_size);
                             
                             if (pingpong_cycle_index >= repeat_images_length) {
                                 pingpong_real_index = pingpong_cycle_size - pingpong_cycle_index;
@@ -381,7 +385,7 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             }
 
                             long int pingpong_idx = repeat_images_start_index - pingpong_real_index - 1;
-                            std::cout << std::format("start: {} , end_idx {}, real_idx {}, cycle_idx: {} rel_index: {}\n", repeat_images_start_index, pingpong_idx, pingpong_real_index, pingpong_cycle_index, rel_index);
+                            //std::cout << std::format("start: {} , end_idx {}, real_idx {}, cycle_idx: {} rel_index: {}\n", repeat_images_start_index, pingpong_idx, pingpong_real_index, pingpong_cycle_index, rel_index);
                             pingpong_idx = limit_to_zero(pingpong_idx);
 
                             auto sample_buffer = frames[pingpong_idx].get();
