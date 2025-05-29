@@ -314,6 +314,9 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             // 0 1 2 3 [loop 4] [exp] [exp] [exp] [exp] [exp] [exp] ...
                             // 0 1 2 3 0        1     2     3     0     1     2     3
                             //
+                            // You can "overshoot" the loop range as well, in which case the earliest frame "sticks"
+                            // This behavior is buggy and can sometimes not show frames in software on playblack.
+                            // When scrubbing through the timeline the software "clamps" to the "earliest" sampled frame.
                             // 0 1 2 3 [loop 6] [exp] [exp] [exp] [exp] [exp] [exp] [exp] [exp] [exp] ...
                             // 0 1 2 3 0        0     0     0     1     2     3     0     0     0     1
                             
@@ -348,7 +351,49 @@ void Layer::read_into_layer(mio::ummap_source& mmap, std::size_t& offset, FileIn
                             break;
                         }
                         case SRAW_repeatimages_t::PINGPONG: {
+                            // PING PONG LAST SET OF FRAMES.
+                            // FOR EXAMPLE: START IDX = 8 ; LENGTH = 5
+                            // 0 1 2 [3 4 5 6 7] start pingpong 6 5 4 3 4 5 6 7 6 5 4 3 4 5 6 7
+                            long int current_index = frames.size();
+                            long int pingpong_cycle_size = repeat_images_length * 2 - 2;
+                            long int rel_index = current_index - repeat_images_start_index - pingpong_cycle_size + 1;
 
+                            long int  pingpong_real_index = 0;
+
+                            long int pingpong_cycle_index = rel_index % (pingpong_cycle_size);
+                            long int pingpong_real_index = 0;
+                            
+                            if (pingpong_cycle_index >= repeat_images_length) {
+                                pingpong_real_index = pingpong_cycle_size - pingpong_cycle_index;
+                            }
+                            else {
+                                pingpong_real_index = pingpong_cycle_index;
+                            }
+
+                            long int pingpong_idx = repeat_images_start_index - pingpong_real_index - 1;
+                            pingpong_idx = limit_to_zero(pingpong_idx);
+
+                            auto sample_buffer = frames[pingpong_idx].get();
+                            Buffer_SRAW_Repeat::buffer_source source;
+                            if (sample_buffer->index() == 0) {
+                                source = &std::get<0>(*sample_buffer);
+                            }
+                            else if (sample_buffer->index() == 1) {
+                                source = &std::get<1>(*sample_buffer);
+                            }
+                            else if (sample_buffer->index() == 2) {
+                                auto repeat = std::get<2>(*sample_buffer);
+                                if (!repeat.is_from_repeatimages) {
+                                    source = repeat.sraw_source;
+                                }
+                                else {
+                                    // stick to last frame if origin of this frame was from a repeat images section.
+                                    // This mirrors the behavior where in TVpaint, exposures are always looking towards the last frame. 
+                                    source = last;
+                                }
+                            }
+                            // push back with info that this frame came from a Repeat Images section
+                            frames.push_back(std::make_unique<buffer_var>(Buffer_SRAW_Repeat(source, true)));
                             break;
                         }
                         case SRAW_repeatimages_t::RANDOM: {
