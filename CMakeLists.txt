@@ -23,3 +23,8 @@ project ("TVPP_PP")
 
 # Include sub-projects.
 add_subdirectory ("TVPP_PP")
+
+project ("TestAPP" LANGUAGES CXX C)
+add_executable(TestAPP "TVPP_PP/main.cpp")
+set_property(TARGET TestAPP PROPERTY CXX_STANDARD 23)
+target_link_libraries(TestAPP PRIVATE TVPP_PP)

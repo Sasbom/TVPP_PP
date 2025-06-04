@@ -1,8 +1,4 @@
-﻿# CMakeList.txt : CMake project for TVPP_PP, include source and define
-# project specific logic here.
-#
-
-# Add source to this project's executable.
+﻿# Add source to this project's executable.
 add_subdirectory(mio)
 
 set(SOURCES
@@ -35,7 +31,19 @@ set(SOURCES
     "stb/stb_image_write.cpp"
 ) 
 
-add_executable (TVPP_PP "main.cpp" ${SOURCES} )
+# add_executable (TVPP_PP "main.cpp" ${SOURCES} )
+if(WIN32)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
+
+add_library (TVPP_PP SHARED ${SOURCES})
+
+target_include_directories(TVPP_PP
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/structs
+)
 
 if (CMAKE_VERSION VERSION_GREATER 3.20)
   set_property(TARGET TVPP_PP PROPERTY CXX_STANDARD 23)

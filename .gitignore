@@ -35,3 +35,4 @@
 out/
 .vs/
 .vscode/
+lib_test/
