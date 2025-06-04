@@ -30,9 +30,3 @@
 *.exe
 *.out
 *.app
-
-
-out/
-.vs/
-.vscode/
-lib_test/

@@ -1,48 +1,53 @@
-﻿# CMakeList.txt : Top-level CMake project file, do global configuration
-# and include sub-projects here.
-#
-cmake_minimum_required (VERSION 3.20)
+﻿project(TVPP_PP)
+# Add source to this project's executable.
+add_subdirectory(mio)
 
-# Enable Hot Reload for MSVC compilers if supported.
-if (POLICY CMP0141)
-  cmake_policy(SET CMP0141 NEW)
-  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
-endif()
+set(SOURCES
+    "miniz/miniz.c"
+    "miniz/miniz.h"
+    "tvp_pp/RLE.hpp"
+    "tvp_pp/zlib_util.hpp"
+    "tvp_pp/num_util.hpp"
+    "tvp_pp/file_util.hpp"
+    "tvp_pp/file_util.cpp"
+    "tvp_pp/frame_util.hpp"
+    "tvp_pp/data.hpp"
+    "tvp_pp/structs/Buffer.hpp"
+    "tvp_pp/structs/Buffer.cpp"
+    "tvp_pp/structs/FileInfo.hpp"
+    "tvp_pp/structs/FileInfo.cpp"
+    "tvp_pp/structs/ThumbInfo.hpp"
+    "tvp_pp/structs/ThumbInfo.cpp" 
+    "tvp_pp/structs/Buffer.hpp" 
+    "tvp_pp/structs/Buffer.cpp"
+    "tvp_pp/structs/Shot.hpp"
+    "tvp_pp/structs/Shot.cpp"
+    "tvp_pp/structs/Clip.hpp"
+    "tvp_pp/structs/Clip.cpp"
+    "tvp_pp/structs/Layer.hpp"
+    "tvp_pp/structs/Layer.cpp"
+    "tvp_pp/structs/File.hpp"
+    "tvp_pp/structs/File.cpp"
+    "stb/stb_image_write.h"
+    "stb/stb_image_write.cpp"
+) 
 
-# Static linking for GCC
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-  message(STATUS "GCC detected: enabling static linking for STD")
-  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-  # set(BUILD_SHARED_LIBS OFF)
-  set(CMAKE_EXE_LINKER_FLAGS "-static")
-endif()
-
-# Include TVPP_PP.
-add_subdirectory ("TVPP_PP")
-
-# Set up test application
-
-project ("TestAPP" LANGUAGES CXX C)
-
-add_executable(TestAPP "TVPP_PP/main.cpp")
-set_property(TARGET TestAPP PROPERTY CXX_STANDARD 23)
-target_link_libraries(TestAPP PRIVATE TVPP_PP)
-
-
+# add_executable (TVPP_PP "main.cpp" ${SOURCES} )
 if(WIN32)
-    add_custom_command(TARGET TestAPP POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:TVPP_PP>
-            $<TARGET_FILE_DIR:TestAPP>
-    )
-elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set_target_properties(TestAPP PROPERTIES
-        BUILD_RPATH "$ORIGIN"
-    )
-
-    add_custom_command(TARGET TestAPP POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:TVPP_PP>
-            $<TARGET_FILE_DIR:TestAPP>
-    )
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
+
+
+add_library (TVPP_PP SHARED ${SOURCES})
+
+target_include_directories(TVPP_PP
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/structs
+)
+
+if (CMAKE_VERSION VERSION_GREATER 3.20)
+  set_property(TARGET TVPP_PP PROPERTY CXX_STANDARD 23)
+endif()
+
+# TODO: Add tests and install targets if needed.
