@@ -59,7 +59,8 @@ The image buffers are top-to-bottom, which might not align with some standards.
 ---
 ### Integrating this in your top CMakeLists
 
-The following snipped should get you up and running.
+The following snipped should get you up and running. 
+
 ```cmake
 # Set up project.
 project (${PROJECT_NAME} LANGUAGES CXX C)
@@ -93,6 +94,13 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     )
 endif()
 ```
+**PAY ATTENTION IF YOU ARE COMPILING USING VISUAL STUDIO ON WINDOWS!!!**
+
+Note that by default, Visual Studio installs a pretty outdated version of CMake. (3.31, when 4+ is out by now.)
+<br>You can [download CMake](https://cmake.org/download/) for your system, 
+<br>go to `Tools > Options > CMake > General > Enable Custom CMake Executable`
+<br>enable it, and add your freshly new downloaded Cmake to the path field below.
+<br>(default install on windows should go to `C:\Program Files\CMake\bin`)
 
 ---
 ### TODO:
