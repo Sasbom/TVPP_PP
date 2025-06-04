@@ -31,7 +31,7 @@ int main() {
 	mio::basic_mmap_source<std::uint8_t> mmap("MyEpicAnimation.tvpp"); // Load the file
 	auto tvp_file = File(mmap); // Indexes offsets to read from on construction
 	tvp_file.print_layers(); // print layer information
-	tvp_file.dump_file_mark(); // Dump out layers, respecting 
+	tvp_file.dump_file_mark(); // Dump out layers, respecting mark in / mark out.
 	return 0;
 }
 ```
