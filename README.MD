@@ -22,6 +22,10 @@ because frames can get dropped if the "Repeat Amount" is set to a number that is
 - Dump everything with one simple helper function.
 
 ### Basic usage
+
+Use this as a submodule. Clone this into your project using
+`git clone --recurse-submodules`
+
 The "File.hpp" header is all you need to get started. Load in a memory mapped file, and construct a File.
 ```c++
 #include "mio/single_include/mio/mio.hpp"
