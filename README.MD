@@ -24,7 +24,12 @@ because frames can get dropped if the "Repeat Amount" is set to a number that is
 ### Basic usage
 
 Use this as a submodule. Clone this into your project using
-`git clone --recurse-submodules`
+
+`git submodule add  https://github.com/Sasbom/TVPP_PP.git`
+
+`git submodule update --init --recursive`
+
+This will pull in the used submodules.
 
 The "File.hpp" header is all you need to get started. Load in a memory mapped file, and construct a File.
 ```c++
