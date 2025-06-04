@@ -1,4 +1,5 @@
-﻿# Add source to this project's executable.
+﻿project(TVPP_PP)
+# Add source to this project's executable.
 add_subdirectory(mio)
 
 set(SOURCES
