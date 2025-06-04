@@ -1,5 +1,8 @@
-﻿project(TVPP_PP)
-# Add source to this project's executable.
+﻿cmake_minimum_required (VERSION 3.20)
+
+project(TVPP_PP)
+
+# mio - memory mapped file utils.
 add_subdirectory(mio)
 
 set(SOURCES
@@ -32,11 +35,10 @@ set(SOURCES
     "stb/stb_image_write.cpp"
 ) 
 
-# add_executable (TVPP_PP "main.cpp" ${SOURCES} )
+# On windows, export all symbols (quite dirty, but it works + I have nothing to hide.)
 if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
-
 
 add_library (TVPP_PP SHARED ${SOURCES})
 
@@ -46,8 +48,7 @@ target_include_directories(TVPP_PP
         ${CMAKE_CURRENT_SOURCE_DIR}/structs
 )
 
-if (CMAKE_VERSION VERSION_GREATER 3.20)
+if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.20)
   set_property(TARGET TVPP_PP PROPERTY CXX_STANDARD 23)
 endif()
 
-# TODO: Add tests and install targets if needed.
