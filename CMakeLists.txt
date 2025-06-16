@@ -40,7 +40,7 @@ if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 endif()
 
-add_library (TVPP_PP SHARED ${SOURCES})
+add_library (TVPP_PP STATIC ${SOURCES})
 
 target_include_directories(TVPP_PP
     PUBLIC
