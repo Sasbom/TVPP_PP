@@ -8,11 +8,8 @@
 
 struct File {
 	File(mio::ummap_source& mmap_file);
-	File(std::string mmap_file_path);
 
 	size_t offset{0};
-
-	mio::ummap_source mmap{};
 
 	FileInfo file_info{};
 	ThumbInfo thumb_info{};

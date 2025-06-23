@@ -22,28 +22,6 @@ File::File(mio::ummap_source& mmap) {
 	clip_cycle(mmap);
 }
 
-File::File(std::string mmap_source) {
-	this->mmap = mio::basic_mmap_source<std::uint8_t>(mmap_source);
-	
-	offset = 0;
-	
-	auto file_hdr = seek_header(this->mmap, offset);
-	auto file_hdr_read = file_read_header(file_hdr);
-	file_info = FileInfo(file_hdr_read);
-	
-	auto thumb_hdr = seek_header(this->mmap, offset);
-	auto thumb_hdr_read = file_read_header(thumb_hdr);
-	thumb_info = ThumbInfo(thumb_hdr_read);
-	
-	seek_3byteimbuffer(mmap, offset); // skip past thumbnail.
-	
-	auto shot_hdr = seek_header(this->mmap, offset, 4, 4096);
-	auto shot_hdr_read = file_read_header(shot_hdr);
-	shot_info = Shot(shot_hdr_read);
-
-	clip_cycle(this->mmap);
-}
-
 void File::clip_cycle(mio::ummap_source& mmap) {
 	auto next = LEXT_AFTER::CLIP;
 	
