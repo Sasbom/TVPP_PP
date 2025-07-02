@@ -49,6 +49,6 @@ target_include_directories(TVPP_PP
 )
 
 if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.20)
-  set_property(TARGET TVPP_PP PROPERTY CXX_STANDARD 23)
+  target_compile_features(TVPP_PP PUBLIC cxx_std_23)
 endif()
 
