@@ -11,8 +11,9 @@
 #include <random>
 #include <functional>
 
+#ifdef VERBOSE
 #define LAYER_VERBOSE
-
+#endif
 #ifdef LAYER_VERBOSE
 #define LOG(message) std::cout << message << "\n"; 
 #else
