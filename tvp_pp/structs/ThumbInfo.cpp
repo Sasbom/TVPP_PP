@@ -1,6 +1,8 @@
 #include "ThumbInfo.hpp"
 #include <format>
 #include <iostream>
+#include <vector>
+#include <string>
 #include <unordered_map>
 #include "../../tvp_pp/data.hpp"
 

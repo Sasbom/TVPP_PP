@@ -6,6 +6,7 @@
 #include "../mio/single_include/mio/mio.hpp"
 #include "num_util.hpp"
 #include <string>
+#include <vector>
 #include <format>
 #include "data.hpp"
 #include <utility>

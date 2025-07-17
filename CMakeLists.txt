@@ -42,6 +42,10 @@ endif()
 
 add_library (TVPP_PP STATIC ${SOURCES})
 
+if(LINUX)
+    target_compile_options(TVPP_PP PRIVATE -fPIC)
+endif()
+
 target_include_directories(TVPP_PP
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
